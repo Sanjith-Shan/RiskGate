@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: vet, staticcheck, race tests, coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l $(git ls-files '*.go'))"
+          if [ -n "$unformatted" ]; then echo "not gofmt-clean:"; echo "$unformatted"; exit 1; fi
+      - name: go mod tidy is a no-op
+        run: go mod tidy -diff
+      - name: go vet
+        run: go vet ./...
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          "$(go env GOPATH)/bin/staticcheck" ./...
+      - name: go test -race
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: coverage summary
+        run: |
+          {
+            echo '### Coverage'
+            echo '```'
+            go tool cover -func=coverage.out | tail -n 1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+      - name: webhook vectors agree with an independent openssl implementation
+        run: scripts/check_signature_vectors.sh
+
+  fuzz:
+    name: fuzz (20s per target)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+      - name: fuzz every Fuzz target
+        run: scripts/fuzz_all.sh 20s
+      - name: upload failing inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-failures
+          path: "**/testdata/fuzz/**"
+
+  python:
+    name: python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: pytest
+        run: |
+          if [ -d python/tests ] || [ -n "$(find python -name 'test_*.py' -o -name '*_test.py' 2>/dev/null | head -n 1)" ]; then
+            python -m pip install --upgrade pip
+            if [ -f python/requirements.txt ]; then python -m pip install -r python/requirements.txt; fi
+            python -m pip install pytest
+            python -m pytest python/
+          else
+            echo "no Python tests yet; skipping"
+          fi
