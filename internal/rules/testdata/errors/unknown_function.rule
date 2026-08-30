@@ -1,0 +1,1 @@
+block if lowercase(:purchaser_email_domain:) = "gmail.com"

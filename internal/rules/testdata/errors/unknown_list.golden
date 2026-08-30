@@ -1,0 +1,4 @@
+error at line 1, column 38:
+allow if :purchaser_email_domain: in @trusted_domain
+                                     ^^^^^^^^^^^^^^^
+unknown list @trusted_domain. Did you mean @trusted_domains?

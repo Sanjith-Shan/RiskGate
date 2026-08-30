@@ -1,0 +1,4 @@
+error at line 1, column 10:
+block if lowercase(:purchaser_email_domain:) = "gmail.com"
+         ^^^^^^^^^
+unknown function lowercase. Did you mean lower?

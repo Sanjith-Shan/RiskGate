@@ -1,0 +1,1 @@
+block if lower(:amount:) = "1"

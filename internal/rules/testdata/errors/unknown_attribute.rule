@@ -1,0 +1,1 @@
+block if :card_txn_cnt_1h: >= 8

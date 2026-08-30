@@ -1,0 +1,4 @@
+error at line 1, column 10:
+block if :amount > 1000
+         ^^^^^^^
+attribute :amount is missing its closing colon. Add a colon after the name: :amount:.
