@@ -1,0 +1,19 @@
+error at line 4, column 10:
+block if :card_txn_cnt_1h: >= 8
+         ^^^^^^^^^^^^^^^^^
+unknown attribute :card_txn_cnt_1h:. Did you mean :card_txn_count_1h:?
+
+error at line 5, column 22:
+review if :amount: > "300" and :devise_type: = "mobile"
+                     ^^^^^
+:amount: is a number, and "300" is a string. Remove the quotes.
+
+error at line 5, column 32:
+review if :amount: > "300" and :devise_type: = "mobile"
+                               ^^^^^^^^^^^^^
+unknown attribute :devise_type:. Did you mean :device_type:?
+
+error at line 7, column 1:
+blok if :amount: > 5000
+^^^^
+unknown action blok. Did you mean block?

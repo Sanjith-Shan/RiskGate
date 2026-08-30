@@ -1,0 +1,4 @@
+error at line 1, column 10:
+block if :card_txn_cnt_1h: >= 8
+         ^^^^^^^^^^^^^^^^^
+unknown attribute :card_txn_cnt_1h:. Did you mean :card_txn_count_1h:?

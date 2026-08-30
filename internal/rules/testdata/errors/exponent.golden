@@ -1,0 +1,4 @@
+error at line 1, column 21:
+block if :amount: > 1e3
+                    ^^^
+1e3 is not a number. Write the number out in full; exponents like 1e3 are not supported.

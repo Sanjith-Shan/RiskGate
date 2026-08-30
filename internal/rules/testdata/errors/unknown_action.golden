@@ -1,0 +1,4 @@
+error at line 1, column 1:
+deny if :risk_score: >= 90
+^^^^
+unknown action deny. Did you mean block?

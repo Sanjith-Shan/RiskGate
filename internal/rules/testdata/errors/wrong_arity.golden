@@ -1,0 +1,4 @@
+error at line 1, column 11:
+review if starts_with(:device_info:)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+starts_with takes 2 arguments (some text and a prefix), but was given 1. For example: starts_with(:device_info:, "SM-")

@@ -1,0 +1,4 @@
+error at line 1, column 28:
+	block if :amount: > 1 and :ämount: > 2
+	                          ^^^^^^^^
+unknown attribute :ämount:. Did you mean :amount:?

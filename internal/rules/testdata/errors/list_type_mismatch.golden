@@ -1,0 +1,4 @@
+error at line 1, column 10:
+block if :amount: in @trusted_domains
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+:amount: is a number, but @trusted_domains holds strings.

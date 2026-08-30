@@ -1,0 +1,4 @@
+error at line 1, column 27:
+review if :device_info: = ""
+                          ^^
+"" is empty text, and empty means missing. To test for a missing value, write is_missing(:device_info:).

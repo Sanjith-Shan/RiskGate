@@ -1,0 +1,24 @@
+warning at line 1, column 10:
+block if :amount: > 500 and :amount: < 100
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+this condition can never be true: :amount: > 500 and :amount: < 100 cannot both hold. Check the comparisons, or use or if either one should match.
+
+warning at line 2, column 11:
+review if :card_type: = "debit" and :card_type: = "credit"
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+this condition can never be true: :card_type: = "debit" and :card_type: = "credit" cannot both hold. Check the comparisons, or use or if either one should match.
+
+warning at line 3, column 10:
+block if 1 < 2
+         ^^^^^
+this condition is always true, so this rule will block every payment. Check the condition; as written it does not depend on the payment.
+
+warning at line 5, column 1:
+block  if  (:risk_score: >= 85)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+this rule is the same as the rule on line 4. Delete one of them.
+
+warning at line 6, column 11:
+review if :amount: != 5 and :amount: = 5
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+this condition can never be true: :amount: != 5 and :amount: = 5 cannot both hold. Check the comparisons, or use or if either one should match.

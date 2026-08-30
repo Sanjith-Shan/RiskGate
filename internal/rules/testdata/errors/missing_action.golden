@@ -1,0 +1,4 @@
+error at line 1, column 1:
+if :amount: > 100
+^^
+this rule has no action. Start the rule with allow, block or review, like: block if ...

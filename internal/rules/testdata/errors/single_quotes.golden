@@ -1,0 +1,4 @@
+error at line 1, column 37:
+block if :purchaser_email_domain: = 'anonymous.com'
+                                    ^^^^^^^^^^^^^^^
+text in rules uses double quotes, not single quotes. Write "anonymous.com".
