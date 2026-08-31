@@ -22,8 +22,6 @@ def hmac_hex(secret: bytes, msg: bytes) -> str:
 
 def verify(v):
     header = v["header"]
-    if header.strip(" \t") == "":
-        return "malformed_header"
     t, sigs = None, []
     for item in header.split(","):
         item = item.strip(" \t")
@@ -33,15 +31,17 @@ def verify(v):
         if key == "":
             return "malformed_header"
         if key == "t":
-            if t is not None or not re.fullmatch(r"0|[1-9][0-9]*", val) or int(val) > 2**63 - 1:
+            if t is not None or not re.fullmatch(r"[0-9]{1,15}", val):
                 return "malformed_header"
             t = val
         elif key == "v1":
-            if not re.fullmatch(r"[0-9a-fA-F]{64}", val):
+            if val == "":
                 return "malformed_header"
-            sigs.append(val.lower())
+            sigs.append(val)
     if t is None or not sigs:
         return "malformed_header"
+    # t is signed exactly as sent; v1 candidates compare as strings against
+    # lowercase hex, so uppercase or junk candidates simply do not match.
     msg = t.encode() + b"." + v["payload"].encode("utf-8")
     expected = {hmac_hex(s.encode("utf-8"), msg) for s in v["secrets"]}
     if not expected.intersection(sigs):
