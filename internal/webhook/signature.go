@@ -14,12 +14,19 @@
 //   - The header is a comma-separated list of key=value items. Spaces and tabs
 //     around an item are ignored. An item without '=' or with an empty key is
 //     malformed.
-//   - t must appear exactly once and be a canonical non-negative decimal
-//     integer (no sign, no leading zeros) that fits in an int64.
-//   - v1 must appear at least once. Each value is 64 hex digits (either case).
-//     During secret rotation the sender includes one v1 per active secret and
-//     the verifier accepts the payload if any of them matches.
+//   - t must appear exactly once and be 1 to 15 ASCII digits (no sign).
+//     The MAC covers t exactly as sent, so "t=0170..." is valid if the
+//     sender signed "0170...". Fifteen digits keep every t inside int64.
+//   - v1 must appear at least once, and no v1 may be empty. Each value is a
+//     candidate compared, in constant time, byte for byte against the
+//     lowercase hex of the expected MAC. A candidate that is uppercase,
+//     truncated, too long or not hex at all is simply one that does not
+//     match. During secret rotation the sender includes one v1 per active
+//     secret and the verifier accepts the payload if any of them matches.
 //   - Any other key (v0, a future v2, ...) is ignored.
+//
+// These are the semantics of Clearinghouse's reference verifiers (Ruby, and
+// Go in clients/go/webhooksig) and of Stripe's libraries.
 //
 // Verification checks, in order: the header parses (else malformed_header),
 // some configured secret produces some v1 in the header (else
@@ -85,12 +92,20 @@ var (
 	ErrMalformedHeader           = &VerificationError{Code: CodeMalformedHeader}
 )
 
+// maxTimestampDigits bounds t so that every accepted value fits in an int64
+// without overflow checks. It matches Clearinghouse's verifiers.
+const maxTimestampDigits = 15
+
 // Header is a parsed Clearinghouse-Signature header.
 type Header struct {
 	// Timestamp is the t value, in Unix seconds.
 	Timestamp int64
-	// Signatures holds the decoded v1 values (32 bytes each), in header order.
-	Signatures [][]byte
+	// TimestampText is t exactly as sent; the MAC is computed over it.
+	TimestampText string
+	// Signatures holds the v1 candidates as sent, in header order. They are
+	// not decoded: a candidate that is not 64 lowercase hex digits cannot
+	// match, and that is all the verifier needs to know about it.
+	Signatures []string
 }
 
 func malformed(format string, args ...any) error {
@@ -120,16 +135,12 @@ func ParseHeader(value string) (Header, error) {
 			if err != nil {
 				return h, err
 			}
-			h.Timestamp, sawT = ts, true
+			h.Timestamp, h.TimestampText, sawT = ts, val, true
 		case "v1":
-			if len(val) != 2*sha256.Size {
-				return h, malformed("v1 must be %d hex digits, got %d characters", 2*sha256.Size, len(val))
+			if val == "" {
+				return h, malformed("empty v1")
 			}
-			sig, err := hex.DecodeString(val)
-			if err != nil {
-				return h, malformed("v1 is not hex")
-			}
-			h.Signatures = append(h.Signatures, sig)
+			h.Signatures = append(h.Signatures, val)
 		default:
 			// Unknown schemes are ignored so the sender can add new ones
 			// without breaking old verifiers.
@@ -144,23 +155,20 @@ func ParseHeader(value string) (Header, error) {
 	return h, nil
 }
 
-// parseTimestamp accepts only the canonical decimal form, so the string the
-// sender signed and the integer the verifier checks cannot disagree.
+// parseTimestamp accepts 1 to maxTimestampDigits ASCII digits.
 func parseTimestamp(s string) (int64, error) {
 	if s == "" {
 		return 0, malformed("empty t")
 	}
+	if len(s) > maxTimestampDigits {
+		return 0, malformed("t has more than %d digits", maxTimestampDigits)
+	}
+	var ts int64
 	for i := 0; i < len(s); i++ {
 		if s[i] < '0' || s[i] > '9' {
 			return 0, malformed("t is not a non-negative integer")
 		}
-	}
-	if len(s) > 1 && s[0] == '0' {
-		return 0, malformed("t has a leading zero")
-	}
-	ts, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return 0, malformed("t out of range")
+		ts = ts*10 + int64(s[i]-'0')
 	}
 	return ts, nil
 }
@@ -230,14 +238,20 @@ func (v *Verifier) VerifyAt(header string, payload []byte, now time.Time) error 
 	return nil
 }
 
-// matches computes one MAC per secret and compares it, in constant time,
-// against every v1 in the header. Work is secrets*signatures comparisons of
-// 32 bytes, so a header stuffed with v1 values costs no extra HMACs.
+// matches computes one MAC per secret, as lowercase hex, and compares it
+// with hmac.Equal against every v1 candidate. hmac.Equal is constant time
+// for equal lengths; a length mismatch reveals only the candidate's length,
+// which the sender chose. A header stuffed with v1 values costs no extra
+// HMACs, only more 64-byte comparisons.
 func (v *Verifier) matches(h Header, payload []byte) bool {
-	for _, secret := range v.Secrets {
-		want := computeMAC(secret, h.Timestamp, payload)
-		for _, got := range h.Signatures {
-			if hmac.Equal(want, got) {
+	want := make([][]byte, len(v.Secrets))
+	for i, secret := range v.Secrets {
+		want[i] = hex.AppendEncode(nil, computeMAC(secret, h.TimestampText, payload))
+	}
+	for _, candidate := range h.Signatures {
+		got := []byte(candidate)
+		for _, w := range want {
+			if hmac.Equal(w, got) {
 				return true
 			}
 		}
@@ -245,9 +259,10 @@ func (v *Verifier) matches(h Header, payload []byte) bool {
 	return false
 }
 
-func computeMAC(secret []byte, timestamp int64, payload []byte) []byte {
+// computeMAC signs "<t>.<payload>" with t exactly as it appears in the header.
+func computeMAC(secret []byte, timestampText string, payload []byte) []byte {
 	mac := hmac.New(sha256.New, secret)
-	mac.Write(strconv.AppendInt(nil, timestamp, 10))
+	mac.Write([]byte(timestampText))
 	mac.Write([]byte{'.'})
 	mac.Write(payload)
 	return mac.Sum(nil)
@@ -257,10 +272,10 @@ func computeMAC(secret []byte, timestamp int64, payload []byte) []byte {
 // with one v1 entry per secret (two during a rotation). It is what
 // Clearinghouse sends, and RiskGate uses it in tests and tooling.
 func Sign(payload []byte, t time.Time, secrets ...[]byte) string {
-	ts := t.Unix()
+	ts := strconv.FormatInt(t.Unix(), 10)
 	var b strings.Builder
 	b.WriteString("t=")
-	b.WriteString(strconv.FormatInt(ts, 10))
+	b.WriteString(ts)
 	for _, s := range secrets {
 		b.WriteString(",v1=")
 		b.WriteString(hex.EncodeToString(computeMAC(s, ts, payload)))
