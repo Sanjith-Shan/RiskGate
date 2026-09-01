@@ -117,3 +117,25 @@ func BenchmarkVerify(b *testing.B) {
 		}
 	}
 }
+
+func TestEmptySecretFailsClosed(t *testing.T) {
+	payload := []byte(`{"id":"evt_1"}`)
+	now := time.Unix(1700000000, 0)
+	// A header signed with an empty key is computable by anyone.
+	header := Sign(payload, now, []byte{})
+	for name, v := range map[string]*Verifier{
+		"no secrets":           NewVerifier(),
+		"empty secret":         NewVerifier(""),
+		"empty beside a valid": NewVerifier("whsec_a", ""),
+	} {
+		if err := v.Validate(); !errors.Is(err, ErrBadSecretConfig) {
+			t.Errorf("%s: Validate() = %v, want ErrBadSecretConfig", name, err)
+		}
+		if err := v.VerifyAt(header, payload, now); err == nil {
+			t.Errorf("%s: forged header with empty key was accepted", name)
+		}
+	}
+	if err := NewVerifier("whsec_a").Validate(); err != nil {
+		t.Errorf("valid config rejected: %v", err)
+	}
+}

@@ -206,11 +206,30 @@ func (v *Verifier) Verify(header string, payload []byte) error {
 	return v.VerifyAt(header, payload, now())
 }
 
+// ErrBadSecretConfig reports a verifier with no secrets or an empty one.
+var ErrBadSecretConfig = errors.New("webhook: at least one non-empty signing secret is required")
+
+// Validate reports whether the verifier is safely configured. An HMAC under
+// an empty key can be computed by anyone, so a verifier holding one would
+// accept forged events, and forged dispute events become fraud labels. The
+// service calls Validate at startup and refuses to boot on error.
+func (v *Verifier) Validate() error {
+	if len(v.Secrets) == 0 {
+		return ErrBadSecretConfig
+	}
+	for _, s := range v.Secrets {
+		if len(s) == 0 {
+			return ErrBadSecretConfig
+		}
+	}
+	return nil
+}
+
 // VerifyAt is Verify with an explicit clock reading.
 func (v *Verifier) VerifyAt(header string, payload []byte, now time.Time) error {
-	if len(v.Secrets) == 0 {
+	if err := v.Validate(); err != nil {
 		// A misconfigured verifier must fail closed, never accept.
-		return &VerificationError{Code: CodeNoMatchingSignature, Reason: "no secrets configured"}
+		return &VerificationError{Code: CodeNoMatchingSignature, Reason: err.Error()}
 	}
 	h, err := ParseHeader(header)
 	if err != nil {
