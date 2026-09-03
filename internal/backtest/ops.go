@@ -180,16 +180,6 @@ func (b constBool) eval(c *chunk, out []uint64) {
 	out[len(out)-1] &= tailMask(c.n)
 }
 
-type notNode struct{ x boolNode }
-
-func (n notNode) eval(c *chunk, out []uint64) {
-	n.x.eval(c, out)
-	for i := range out {
-		out[i] = ^out[i]
-	}
-	out[len(out)-1] &= tailMask(c.n)
-}
-
 // logicNode is and/or. It skips its right operand when the left one already
 // decides the whole chunk, which is common: a selective first conjunct
 // leaves most chunks empty.
@@ -314,8 +304,8 @@ func (n isNaNNode) refine(c *chunk, sel []uint64) bool {
 	if !ok {
 		return false
 	}
-	x := col.col[c.lo : c.lo+c.n]
-	eachSet(sel, func(i int) bool { return x[i] != x[i] })
+	x, want := col.col[c.lo:c.lo+c.n], n.want
+	eachSet(sel, func(i int) bool { return (x[i] != x[i]) == want })
 	return true
 }
 
@@ -324,8 +314,8 @@ func (n inNumNode) refine(c *chunk, sel []uint64) bool {
 	if !ok {
 		return false
 	}
-	x, set := col.col[c.lo:c.lo+c.n], n.set
-	eachSet(sel, func(i int) bool { return containsNum(set, x[i]) })
+	x, set, want := col.col[c.lo:c.lo+c.n], n.set, n.want
+	eachSet(sel, func(i int) bool { return x[i] == x[i] && containsNum(set, x[i]) == want })
 	return true
 }
 
@@ -450,29 +440,36 @@ func (n cmpVV) eval(c *chunk, out []uint64) {
 	}
 }
 
-type isNaNNode struct{ x numNode }
+// isNaNNode is is_missing (want) or its negation, "present" (!want).
+type isNaNNode struct {
+	x    numNode
+	want bool
+}
 
 func (n isNaNNode) eval(c *chunk, out []uint64) {
 	x := n.x.eval(c)
+	want := n.want
 	for w := range out {
 		var word uint64
 		for j, v := range x[w<<6 : min(len(x), w<<6+64)] {
-			word |= b2u(v != v) << uint(j)
+			word |= b2u((v != v) == want) << uint(j)
 		}
 		out[w] = word
 	}
 }
 
 // inNumNode tests membership in a sorted list: a short list is scanned, a
-// long one binary-searched.
+// long one binary-searched. A row's bit is set when the value is present
+// and its membership equals want, so !want is the FALSE mask of in.
 type inNumNode struct {
-	x   numNode
-	set []float64
+	x    numNode
+	set  []float64
+	want bool
 }
 
 func (n inNumNode) eval(c *chunk, out []uint64) {
 	x := n.x.eval(c)
-	set := n.set
+	set, want := n.set, n.want
 	for w := range out {
 		var word uint64
 		for j, v := range x[w<<6 : min(len(x), w<<6+64)] {
@@ -484,7 +481,7 @@ func (n inNumNode) eval(c *chunk, out []uint64) {
 			} else {
 				hit = containsNum(set, v)
 			}
-			word |= b2u(hit) << uint(j)
+			word |= b2u(v == v && hit == want) << uint(j)
 		}
 		out[w] = word
 	}
@@ -535,6 +532,7 @@ func (n strPair) eval(c *chunk, out []uint64) {
 type prefixPair struct {
 	a, b   []uint32
 	va, vb []string
+	want   bool // the prefix test's result that sets a row's bit
 }
 
 func (n prefixPair) eval(c *chunk, out []uint64) {
@@ -544,7 +542,7 @@ func (n prefixPair) eval(c *chunk, out []uint64) {
 		var word uint64
 		for j := range hi - lo {
 			x, y := n.va[a[lo+j]], n.vb[b[lo+j]]
-			word |= b2u(x != "" && y != "" && strings.HasPrefix(x, y)) << uint(j)
+			word |= b2u(x != "" && y != "" && strings.HasPrefix(x, y) == n.want) << uint(j)
 		}
 		out[w] = word
 	}

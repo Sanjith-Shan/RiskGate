@@ -14,6 +14,7 @@ covers it.
 | `TestEvaluateRuleSetMatchesEvaluate` | Vectorized Radar-order decisions and per-rule attribution against `rules.RuleSet.Evaluate`, 60 generated rule sets of 1 to 25 rules | every `go test` |
 | `TestRunMatchesOracle` | Report counts against the definition: evaluate the rule set with and without the proposed rule, row by row, and count the rows whose action differs | 80 random rule sets and windows |
 | `backtest difftest` | Same as `TestDifferential`, at full size | 5,000 rules (depth 0 to 8) x 590,540 SYNTHETIC rows = 2.95 billion checks, 0 disagreements, 1m17s on an M3 Pro under heavy load, 2026-09-23 |
+| `backtest difftest`, after the switch to three-valued logic | Same configuration | 5,000 rules (depth 0 to 8, 937 grounded) x 590,540 SYNTHETIC rows = 2,952,700,000 checks, 0 disagreements, 22.1s on an M3 Pro under load, 2026-09-23 |
 
 Adversarial values: -0, ±5e-324, 1e-300, 0.1+0.2, ±MaxFloat64, ±Inf,
 2^53+1; the Kelvin sign (lowers to ASCII `k`), dotted capital I (lowering
@@ -44,6 +45,20 @@ tests catch it (all reverted):
 | sparse refinement inverts a numeric comparison | `TestDifferential` | about 400 over 8 rules |
 | sparse refinement inverts a string lookup | `TestDifferential` | about 1,000 over 20 rules |
 | column-vs-column string refinement ignores missing | `TestDifferential` | about 15 over 1 to 5 rules |
+| `not` two-valued: complements the TRUE mask instead of taking the FALSE mask | `TestDifferential` | 83,000 to 107,000 over 262 to 277 rules per table |
+
+### Three-valued logic (2026-09-23)
+
+The rule language switched from two-valued logic to Kleene's three-valued
+logic, to match Radar's documented treatment of `not` over missing values
+(see `rules/doc.go`). The vectorized evaluator now compiles each condition
+node into either its TRUE mask or its FALSE mask. `not` asks its operand
+for the other mask instead of complementing a bitmap, and a missing operand
+is in neither mask. Both evaluators were changed independently from the
+same truth tables. After the change, `TestDifferential`,
+`TestDifferentialEdgeRules` and the full `difftest` above found no
+disagreement. The planted bug in the last row of the table checks that
+the harness can tell the two logics apart.
 
 Forcing sparse refinement on every chunk (a change that should be invisible)
 passes, as it should.
