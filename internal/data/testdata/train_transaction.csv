@@ -1,0 +1,11 @@
+TransactionID,isFraud,TransactionDT,TransactionAmt,ProductCD,card1,card2,card3,card4,card5,card6,addr1,addr2,dist1,dist2,P_emaildomain,R_emaildomain,C1,D1,V1
+100001,0,86400,41.25,W,5001,,150.0,discover,142.0,credit,210.0,87.0,12.0,,,,1.0,9.0,1.0
+100005,0,86506,75.0,H,5002,514.0,150.0,mastercard,102.0,credit,211.0,87.0,,,gmail.com,,1.0,0.0,
+100003,1,86506,22.5,W,5003,490.0,150.0,visa,166.0,debit,212.0,87.0,301.0,,outlook.com,,1.0,0.0,1.0
+100002,0,86401,18.0,W,5004,404.0,150.0,mastercard,102.0,credit,213.0,87.0,,,gmail.com,,1.0,0.0,
+100004,0,86499,64.0,C,5005,567.0,150.0,mastercard,117.0,debit,214.0,87.0,,,yahoo.com,,2.0,77.0,
+100006,1,2678500,15.125,C,5006,,185.0,visa,226.0,credit,,,,30.0,anonymous.com,anonymous.com,1.0,0.0,
+100007,0,10454400,99.0,W,5001,,150.0,discover,142.0,credit,210.0,87.0,4.0,,,,1.0,129.0,1.0
+100008,0,13046400,0.251,C,5006,,185.0,visa,226.0,credit,,,,,hotmail.com,hotmail.com,3.0,,
+100009,1,15638400,1200.0,R,5007,514.0,150.0,american express,102.0,credit,215.0,87.0,,,aol.com,aol.com,1.0,1.0,
+100010,0,5270400,35.95,S,5008,194.0,150.0,,166.0,,,,,,,,,,
