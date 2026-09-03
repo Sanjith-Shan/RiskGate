@@ -47,7 +47,8 @@ func bad(format string, args ...any) { panic(compileError{fmt.Sprintf(format, ar
 //
 // Sub-expressions compile to typed closures: numbers to func(Row) float64
 // with NaN for missing, strings to func(Row) string with "" for missing, and
-// conditions to func(Row) bool. Constant sub-trees are folded at compile
+// conditions to func(Row) bool (see compileBool for how a bool closure
+// carries three-valued logic). Constant sub-trees are folded at compile
 // time by running the very closure that would have run per row, once, so
 // folding can never disagree with evaluation. Comparisons of an attribute
 // against a constant, the commonest shape by far, get specialized closures
@@ -62,7 +63,7 @@ func Compile(r *Rule) (cr *CompiledRule, err error) {
 			err = fmt.Errorf("rules: cannot compile %q: %s (was it checked?)", r.Text, ce.msg)
 		}
 	}()
-	b := compileBool(r.Cond)
+	b := compileBool(r.Cond, true)
 	return &CompiledRule{
 		ID:     RuleID(r),
 		Index:  r.Index,
@@ -86,7 +87,7 @@ func CompileExpr(e Expr) (fn func(schema.Row) bool, err error) {
 			err = fmt.Errorf("rules: cannot compile %s: %s (was it checked?)", Print(e), ce.msg)
 		}
 	}()
-	return compileBool(e).fn, nil
+	return compileBool(e, true).fn, nil
 }
 
 var nan = math.NaN()
@@ -251,48 +252,67 @@ func compileStr(e Expr) strC {
 	return strC{}
 }
 
-func compileBool(e Expr) boolC {
+// compileBool compiles a condition, whose value is TRUE, FALSE or UNKNOWN
+// (Kleene logic, see the package documentation), into a closure answering
+// one yes/no question about it: "is e TRUE?" when want is true, "is e
+// FALSE?" when want is false. A rule matches when its condition is TRUE, so
+// compilation starts with want = true, and the question flips at each not:
+//
+//	TRUE(not x)  = FALSE(x)             FALSE(not x)  = TRUE(x)
+//	TRUE(x and y) = TRUE(x) and TRUE(y)  FALSE(x and y) = FALSE(x) or FALSE(y)
+//	TRUE(x or y)  = TRUE(x) or TRUE(y)   FALSE(x or y)  = FALSE(x) and FALSE(y)
+//	TRUE(a < b)  = present and a < b    FALSE(a < b)  = present and a >= b
+//
+// UNKNOWN is whatever answers no to both questions. So the online path
+// never materializes a third value: a rule without not compiles to exactly
+// the closures two-valued logic would, and each not costs nothing at run
+// time. Every node is asked exactly one question (fixed by the parity of
+// the nots above it), so no subtree is compiled twice.
+func compileBool(e Expr, want bool) boolC {
 	switch e := e.(type) {
 	case *BoolLit:
-		return boolConst(e.Value)
+		return boolConst(e.Value == want)
 	case *Unary:
 		if e.Op != OpNot {
 			bad("%s is not a condition", describe(e))
 		}
-		x := compileBool(e.X)
-		if x.konst {
-			return boolConst(!x.v)
-		}
-		xf := x.fn
-		return boolC{fn: func(r schema.Row) bool { return !xf(r) }}
+		return compileBool(e.X, !want)
 	case *Binary:
 		switch {
 		case e.Op == OpAnd || e.Op == OpOr:
-			return logical(e.Op, compileBool(e.X), compileBool(e.Y))
+			op := e.Op
+			if !want {
+				op = dual(op)
+			}
+			return logical(op, compileBool(e.X, want), compileBool(e.Y, want))
 		case e.Op.IsComparison():
+			op := e.Op
+			if !want {
+				op = negate(op)
+			}
 			switch e.X.Type() {
 			case TypeNumber:
-				return compareNum(e.Op, compileNum(e.X), compileNum(e.Y))
+				return compareNum(op, compileNum(e.X), compileNum(e.Y))
 			case TypeString:
-				return compareStr(e.Op, compileStr(e.X), compileStr(e.Y))
+				return compareStr(op, compileStr(e.X), compileStr(e.Y))
 			}
 		}
 	case *In:
 		switch e.Kind {
 		case schema.Number:
-			return inNum(compileNum(e.X), e.Numbers)
+			return inNum(compileNum(e.X), e.Numbers, want)
 		case schema.String:
-			return inStr(compileStr(e.X), e.Strings)
+			return inStr(compileStr(e.X), e.Strings, want)
 		}
 	case *Call:
 		switch e.Fn {
 		case FuncIsMissing:
 			if len(e.Args) == 1 {
-				return isMissing(e.Args[0])
+				return isMissing(e.Args[0], want)
 			}
 		case FuncStartsWith:
 			if len(e.Args) == 2 {
-				return startsWith(compileStr(e.Args[0]), compileStr(e.Args[1]))
+				return startsWith(compileStr(e.Args[0]), compileStr(e.Args[1]), want)
 			}
 		}
 	}
@@ -300,8 +320,37 @@ func compileBool(e Expr) boolC {
 	return boolC{}
 }
 
-// logical builds and/or. With two-valued logic a constant operand either
-// decides the result or drops out, whatever the other side evaluates to.
+// dual swaps and with or: FALSE(x and y) is FALSE(x) or FALSE(y).
+func dual(op Op) Op {
+	if op == OpAnd {
+		return OpOr
+	}
+	return OpAnd
+}
+
+// negate returns the comparison that holds exactly when op does not, for
+// operands that are both present. FALSE(a < b) is TRUE(a >= b), because
+// both require a and b to be present.
+func negate(op Op) Op {
+	switch op {
+	case OpEq:
+		return OpNe
+	case OpNe:
+		return OpEq
+	case OpLt:
+		return OpGe
+	case OpLe:
+		return OpGt
+	case OpGt:
+		return OpLe
+	case OpGe:
+		return OpLt
+	}
+	return op
+}
+
+// logical builds the and or or of two yes/no answers. A constant operand
+// either decides the result or drops out.
 func logical(op Op, x, y boolC) boolC {
 	decisive := op == OpOr // true decides or, false decides and
 	for _, pair := range [2][2]boolC{{x, y}, {y, x}} {
@@ -333,9 +382,9 @@ func flip(op Op) Op {
 	return op
 }
 
-// compareNum builds a numeric comparison. Go's float comparisons are already
-// false when either side is NaN, except !=, which has to rule missing out
-// explicitly: "missing != 5" is false like every comparison with missing.
+// compareNum builds "a op b holds and neither side is missing". Go's float
+// comparisons are already false when either side is NaN, except !=, which
+// has to rule missing out explicitly.
 func compareNum(op Op, x, y numC) boolC {
 	if x.konst && !y.konst {
 		x, y, op = y, x, flip(op)
@@ -343,7 +392,7 @@ func compareNum(op Op, x, y numC) boolC {
 	if y.konst && !x.konst {
 		c := y.v
 		if math.IsNaN(c) {
-			return boolConst(false)
+			return boolConst(false) // UNKNOWN on every row: neither TRUE nor FALSE
 		}
 		if x.slot >= 0 {
 			return boolC{fn: compareSlotConst(op, x.slot, c)}
@@ -404,8 +453,7 @@ func compareSlotConst(op Op, s int, c float64) func(schema.Row) bool {
 	return nil
 }
 
-// compareStr builds = or != over text. Either side missing ("") makes the
-// comparison false.
+// compareStr builds "a = b (or a != b) holds and neither side is missing".
 func compareStr(op Op, x, y strC) boolC {
 	if op != OpEq && op != OpNe {
 		bad("%s does not compare text", op)
@@ -445,26 +493,33 @@ func compareStr(op Op, x, y strC) boolC {
 // it a scan beats hashing; above it a map does.
 const linearMax = 8
 
-func inNum(x numC, values []float64) boolC {
+// inNum builds "x is present and (want: in / !want: not in) values".
+func inNum(x numC, values []float64, want bool) boolC {
 	xf := x.fn
 	var fn func(schema.Row) bool
 	if len(values) <= linearMax {
 		fn = func(r schema.Row) bool {
 			v := xf(r)
+			if v != v {
+				return false
+			}
 			for _, n := range values {
 				if v == n {
-					return true
+					return want
 				}
 			}
-			return false
+			return !want
 		}
 	} else {
 		set := make(map[float64]struct{}, len(values))
 		for _, v := range values {
 			set[v] = struct{}{}
 		}
-		// NaN is never a map key match, so missing is never in the set.
-		fn = func(r schema.Row) bool { _, ok := set[xf(r)]; return ok }
+		fn = func(r schema.Row) bool {
+			v := xf(r)
+			_, ok := set[v]
+			return v == v && ok == want
+		}
 	}
 	return foldBool(fn, x.konst)
 }
@@ -473,7 +528,8 @@ func inNum(x numC, values []float64) boolC {
 // hashed list. Longer values fall back to a scan.
 const lowerBufSize = 128
 
-func inStr(x strC, values []string) boolC {
+// inStr builds "x is present and (want: in / !want: not in) values".
+func inStr(x strC, values []string, want bool) boolC {
 	if x.konst && x.lower {
 		bad("constant lowered text was not folded")
 	}
@@ -488,17 +544,21 @@ func inStr(x strC, values []string) boolC {
 			}
 			for _, s := range values {
 				if foldEqual(v, xl, s, false) {
-					return true
+					return want
 				}
 			}
-			return false
+			return !want
 		}
 	case !xl:
 		set := make(map[string]struct{}, len(values))
 		for _, v := range values {
 			set[v] = struct{}{}
 		}
-		fn = func(r schema.Row) bool { _, ok := set[xf(r)]; return ok }
+		fn = func(r schema.Row) bool {
+			v := xf(r)
+			_, ok := set[v]
+			return v != "" && ok == want
+		}
 	default:
 		set := make(map[string]struct{}, len(values))
 		for _, v := range values {
@@ -512,41 +572,43 @@ func inStr(x strC, values []string) boolC {
 			var buf [lowerBufSize]byte
 			if n, ok := lowerInto(buf[:], v); ok {
 				_, hit := set[string(buf[:n])] // no allocation: the compiler special-cases map[string(bytes)]
-				return hit
+				return hit == want
 			}
 			for _, s := range values {
 				if foldEqual(v, true, s, false) {
-					return true
+					return want
 				}
 			}
-			return false
+			return !want
 		}
 	}
 	return foldBool(fn, x.konst)
 }
 
-func isMissing(arg Expr) boolC {
+// isMissing is never UNKNOWN: FALSE(is_missing(x)) is simply "x is present".
+func isMissing(arg Expr, want bool) boolC {
 	switch arg.Type() {
 	case TypeNumber:
 		x := compileNum(arg)
 		if x.slot >= 0 {
 			s := x.slot
-			return boolC{fn: func(r schema.Row) bool { v := r.Num[s]; return v != v }}
+			return boolC{fn: func(r schema.Row) bool { v := r.Num[s]; return (v != v) == want }}
 		}
 		xf := x.fn
-		return foldBool(func(r schema.Row) bool { return math.IsNaN(xf(r)) }, x.konst)
+		return foldBool(func(r schema.Row) bool { return math.IsNaN(xf(r)) == want }, x.konst)
 	case TypeString:
 		// Lowering never turns non-empty text into empty text, so the
 		// unlowered value answers for lower(x) too.
 		x := compileStr(arg)
 		xf := x.fn
-		return foldBool(func(r schema.Row) bool { return xf(r) == "" }, x.konst)
+		return foldBool(func(r schema.Row) bool { return (xf(r) == "") == want }, x.konst)
 	}
 	bad("is_missing of %s", describe(arg))
 	return boolC{}
 }
 
-func startsWith(x, p strC) boolC {
+// startsWith builds "both sides present and the prefix test gives want".
+func startsWith(x, p strC, want bool) boolC {
 	xf, pf, xl, pl := x.fn, p.fn, x.lower, p.lower
 	if p.konst && !x.konst {
 		c := p.v
@@ -555,16 +617,19 @@ func startsWith(x, p strC) boolC {
 		}
 		if x.slot >= 0 && !xl {
 			s := x.slot
-			return boolC{fn: func(r schema.Row) bool { return strings.HasPrefix(r.Str[s], c) }}
+			if want {
+				return boolC{fn: func(r schema.Row) bool { return strings.HasPrefix(r.Str[s], c) }}
+			}
+			return boolC{fn: func(r schema.Row) bool { v := r.Str[s]; return v != "" && !strings.HasPrefix(v, c) }}
 		}
 		return boolC{fn: func(r schema.Row) bool {
 			v := xf(r)
-			return v != "" && foldHasPrefix(v, xl, c, false)
+			return v != "" && foldHasPrefix(v, xl, c, false) == want
 		}}
 	}
 	fn := func(r schema.Row) bool {
 		a, b := xf(r), pf(r)
-		return a != "" && b != "" && foldHasPrefix(a, xl, b, pl)
+		return a != "" && b != "" && foldHasPrefix(a, xl, b, pl) == want
 	}
 	return foldBool(fn, x.konst && p.konst)
 }

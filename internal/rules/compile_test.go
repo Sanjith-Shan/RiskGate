@@ -3,6 +3,7 @@ package rules
 import (
 	"math"
 	"math/rand/v2"
+	"slices"
 	"strings"
 	"testing"
 	"unicode"
@@ -11,13 +12,35 @@ import (
 )
 
 // refEval is a deliberately naive tree-walking interpreter of the documented
-// semantics. It shares no code with the compiler (no folding, no
-// specialization, no byte iterators), which is what makes it an oracle.
+// semantics. It shares no code with the compiler: it carries an explicit
+// three-valued truth value through Kleene's tables, where the compiler asks
+// "is it TRUE?" or "is it FALSE?" of each node and never builds a third
+// value. That difference in formulation is what makes it an oracle.
+type truth uint8
+
+const (
+	tFalse truth = iota
+	tUnknown
+	tTrue
+)
+
+func (t truth) String() string { return [...]string{"FALSE", "UNKNOWN", "TRUE"}[t] }
+
+func tb(b bool) truth {
+	if b {
+		return tTrue
+	}
+	return tFalse
+}
+
 type refVal struct {
 	num float64
 	str string
-	b   bool
+	t   truth
 }
+
+// refMatch is whether a rule with condition e matches row r.
+func refMatch(e Expr, r schema.Row) bool { return refEval(e, r).t == tTrue }
 
 func refEval(e Expr, r schema.Row) refVal {
 	switch e := e.(type) {
@@ -31,20 +54,32 @@ func refEval(e Expr, r schema.Row) refVal {
 	case *StringLit:
 		return refVal{str: e.Value}
 	case *BoolLit:
-		return refVal{b: e.Value}
+		return refVal{t: tb(e.Value)}
 	case *Unary:
 		x := refEval(e.X, r)
 		if e.Op == OpNot {
-			return refVal{b: !x.b}
+			return refVal{t: [...]truth{tFalse: tTrue, tUnknown: tUnknown, tTrue: tFalse}[x.t]}
 		}
 		return refVal{num: -x.num}
 	case *Binary:
 		x, y := refEval(e.X, r), refEval(e.Y, r)
 		switch e.Op {
 		case OpAnd:
-			return refVal{b: x.b && y.b}
+			switch {
+			case x.t == tFalse || y.t == tFalse:
+				return refVal{t: tFalse}
+			case x.t == tTrue && y.t == tTrue:
+				return refVal{t: tTrue}
+			}
+			return refVal{t: tUnknown}
 		case OpOr:
-			return refVal{b: x.b || y.b}
+			switch {
+			case x.t == tTrue || y.t == tTrue:
+				return refVal{t: tTrue}
+			case x.t == tFalse && y.t == tFalse:
+				return refVal{t: tFalse}
+			}
+			return refVal{t: tUnknown}
 		case OpAdd:
 			return refVal{num: x.num + y.num}
 		case OpSub:
@@ -59,12 +94,12 @@ func refEval(e Expr, r schema.Row) refVal {
 		}
 		if e.X.Type() == TypeString {
 			if x.str == "" || y.str == "" {
-				return refVal{}
+				return refVal{t: tUnknown}
 			}
-			return refVal{b: (x.str == y.str) == (e.Op == OpEq)}
+			return refVal{t: tb((x.str == y.str) == (e.Op == OpEq))}
 		}
 		if math.IsNaN(x.num) || math.IsNaN(y.num) {
-			return refVal{}
+			return refVal{t: tUnknown}
 		}
 		var b bool
 		switch e.Op {
@@ -81,23 +116,19 @@ func refEval(e Expr, r schema.Row) refVal {
 		case OpGe:
 			b = x.num >= y.num
 		}
-		return refVal{b: b}
+		return refVal{t: tb(b)}
 	case *In:
 		x := refEval(e.X, r)
 		if e.Kind == schema.Number {
-			for _, v := range e.Numbers {
-				if !math.IsNaN(x.num) && x.num == v {
-					return refVal{b: true}
-				}
+			if math.IsNaN(x.num) {
+				return refVal{t: tUnknown}
 			}
-			return refVal{}
+			return refVal{t: tb(slices.Contains(e.Numbers, x.num))}
 		}
-		for _, v := range e.Strings {
-			if x.str != "" && x.str == v {
-				return refVal{b: true}
-			}
+		if x.str == "" {
+			return refVal{t: tUnknown}
 		}
-		return refVal{}
+		return refVal{t: tb(slices.Contains(e.Strings, x.str))}
 	case *Call:
 		switch e.Fn {
 		case FuncLower:
@@ -105,12 +136,15 @@ func refEval(e Expr, r schema.Row) refVal {
 		case FuncIsMissing:
 			x := refEval(e.Args[0], r)
 			if e.Args[0].Type() == TypeNumber {
-				return refVal{b: math.IsNaN(x.num)}
+				return refVal{t: tb(math.IsNaN(x.num))}
 			}
-			return refVal{b: x.str == ""}
+			return refVal{t: tb(x.str == "")}
 		case FuncStartsWith:
 			s, p := refEval(e.Args[0], r).str, refEval(e.Args[1], r).str
-			return refVal{b: s != "" && p != "" && strings.HasPrefix(s, p)}
+			if s == "" || p == "" {
+				return refVal{t: tUnknown}
+			}
+			return refVal{t: tb(strings.HasPrefix(s, p))}
 		}
 	}
 	panic("refEval: unexpected node " + Print(e))
@@ -150,22 +184,43 @@ func row(kv ...any) schema.Row {
 	return r
 }
 
-// TestMissingSemantics is the truth table in the package documentation.
+// TestMissingSemantics is the truth table in the package documentation,
+// plus the Kleene cases where UNKNOWN does not propagate: FALSE decides an
+// and, and TRUE decides an or, whatever the other side is.
 func TestMissingSemantics(t *testing.T) {
+	exprs := []string{
+		":amount: > 100",
+		"not :amount: > 100",
+		":amount: <= 100",
+		"is_missing(:amount:)",
+		"not is_missing(:amount:)",
+		":amount: != 100",
+		"not :amount: = 100",
+		"not :amount: > 100 or is_missing(:amount:)",
+		":amount: > 100 or true",
+		"not (:amount: > 100 and false)",
+		"not (:amount: > 100 and true)",
+		"not (:amount: > 100 or true)",
+		":amount: in [150, 50]",
+		"not :amount: in [150, 50]",
+	}
 	rows := []struct {
 		name string
 		row  schema.Row
-		want [4]bool // > 100, not > 100, <= 100, is_missing
+		want []bool
 	}{
-		{"150", row("amount", 150), [4]bool{true, false, false, false}},
-		{"50", row("amount", 50), [4]bool{false, true, true, false}},
-		{"missing", row(), [4]bool{false, true, false, true}},
+		{"150", row("amount", 150), []bool{true, false, false, false, true, true, true, false, true, true, false, false, true, false}},
+		{"50", row("amount", 50), []bool{false, true, true, false, true, true, true, true, true, true, true, false, true, false}},
+		{"missing", row(), []bool{false, false, false, true, false, false, false, true, true, true, false, false, false, false}},
 	}
-	exprs := []string{":amount: > 100", "not :amount: > 100", ":amount: <= 100", "is_missing(:amount:)"}
 	for _, rr := range rows {
 		for i, src := range exprs {
-			if _, fn := compileExpr(t, src); fn(rr.row) != rr.want[i] {
-				t.Errorf("amount=%s: %s = %v, want %v", rr.name, src, !rr.want[i], rr.want[i])
+			e, fn := compileExpr(t, src)
+			if got := fn(rr.row); got != rr.want[i] {
+				t.Errorf("amount=%s: %s matches = %v, want %v", rr.name, src, got, rr.want[i])
+			}
+			if got := refMatch(e, rr.row); got != rr.want[i] {
+				t.Errorf("reference disagrees: amount=%s: %s = %v", rr.name, src, got)
 			}
 		}
 	}
@@ -185,8 +240,8 @@ func TestEvaluate(t *testing.T) {
 		{"is_missing(:amount: / :card_txn_count_1h:)", true, true},
 		{"is_missing(:amount: / 0)", true, true},
 		{"is_missing(:amount: + 1)", false, true},
-		{":amount: != 1", true, false}, // != with missing is false
-		{"not :amount: = 1", true, true},
+		{":amount: != 1", true, false},    // != with missing is UNKNOWN
+		{"not :amount: = 1", true, false}, // not of UNKNOWN is UNKNOWN
 		{"-:amount: < 0", true, false},
 		{`:card_type: = "credit"`, false, false},
 		{`lower(:card_type:) = "credit"`, true, false},
@@ -194,7 +249,12 @@ func TestEvaluate(t *testing.T) {
 		{`:card_type: != "credit"`, true, false},
 		{`lower(:purchaser_email_domain:) in @trusted_domains`, true, false},
 		{`:purchaser_email_domain: in @trusted_domains`, false, false},
-		{`:purchaser_email_domain: not in @trusted_domains`, true, true},
+		{`:purchaser_email_domain: not in @trusted_domains`, true, false},
+		{`not starts_with(:device_info:, "x")`, true, false},
+		{`not is_missing(:device_info:) and not starts_with(:device_info:, "x")`, true, false},
+		{`not (:risk_score: > 1 and :card_type: = "credit")`, true, false},
+		{`not (:risk_score: > 1 or false)`, false, false},
+		{`not not :risk_score: > 1`, true, false},
 		{`lower(:purchaser_email_domain:) = lower("Gmail.Com")`, true, false},
 		{`lower(:purchaser_email_domain:) = lower(:purchaser_email_domain:)`, true, false},
 		{`:card_type: = :card_type:`, true, false},
@@ -231,7 +291,7 @@ func TestEvaluate(t *testing.T) {
 			t.Errorf("%s on empty row = %v, want %v", tt.src, got, tt.empty)
 		}
 		// The oracle must agree with the table too, or the table is wrong.
-		if got := refEval(e, full).b; got != tt.full {
+		if got := refMatch(e, full); got != tt.full {
 			t.Errorf("reference disagrees on %s: %v", tt.src, got)
 		}
 	}
@@ -256,7 +316,7 @@ func TestCompiledMatchesReference(t *testing.T) {
 			t.Fatal(err)
 		}
 		for j, row := range rows {
-			got, want := cr.Match(row), refEval(r.Cond, row).b
+			got, want := cr.Match(row), refMatch(r.Cond, row)
 			if got != want {
 				t.Fatalf("rule %s\nrow %d: compiled %v, reference %v\nnum %v\nstr %q", r, j, got, want, row.Num, row.Str)
 			}
@@ -291,7 +351,7 @@ func TestConstantFolding(t *testing.T) {
 		{`:amount: + 1 > 2`, false},
 	} {
 		e, _ := compileExpr(t, tt.src)
-		if b := compileBool(e); b.konst != tt.konst {
+		if b := compileBool(e, true); b.konst != tt.konst {
 			t.Errorf("%s: folded = %v, want %v", tt.src, b.konst, tt.konst)
 		}
 	}

@@ -12,7 +12,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -81,39 +80,10 @@ func run(path, listsPath string, format bool) int {
 	return 0
 }
 
-// loadLists reads {"name": [values...]}, where each list is all strings or
-// all numbers.
 func loadLists(path string) (rules.Lists, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var raw map[string][]any
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return nil, err
-	}
-	lists := make(rules.Lists, len(raw))
-	for name, vals := range raw {
-		var strs []string
-		var nums []float64
-		for _, v := range vals {
-			switch v := v.(type) {
-			case string:
-				strs = append(strs, v)
-			case float64:
-				nums = append(nums, v)
-			default:
-				return nil, fmt.Errorf("list %q: %v is neither text nor a number", name, v)
-			}
-		}
-		switch {
-		case strs != nil && nums != nil:
-			return nil, fmt.Errorf("list %q mixes text and numbers", name)
-		case nums != nil:
-			lists[name] = rules.NumberList(nums...)
-		default:
-			lists[name] = rules.StringList(strs...)
-		}
-	}
-	return lists, nil
+	return rules.ParseLists(b)
 }

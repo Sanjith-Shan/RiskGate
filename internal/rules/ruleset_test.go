@@ -134,6 +134,8 @@ func TestLint(t *testing.T) {
 		{"block if 2 > 1", "always true, so this rule will block every payment"},
 		{"allow if :amount: > 1 or true", "always true, so this rule will allow every payment"},
 		{"block if :amount: > 1 / 0", "never true"},
+		{"block if not :amount: > 1 / 0", "never true"}, // UNKNOWN on every row, and not keeps it UNKNOWN
+		{"block if not (:amount: > 1 / 0) or true", "always true"},
 	}
 	for _, tt := range tests {
 		r := mustCheck(t, tt.src)
