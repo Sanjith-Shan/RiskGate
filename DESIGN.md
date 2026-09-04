@@ -244,24 +244,23 @@ The types are number, string and bool, and **missing** is a value of either numb
 
 The rules, from `internal/rules/doc.go`, are these.
 
-1. Any comparison or `in` involving a missing value is false. That includes `!=`. `missing != 5` is false, not true.
-2. Arithmetic with a missing operand is missing, and so is division by zero.
-3. `lower(missing)` is missing. `starts_with` with either side missing is false. `is_missing(x)` is true exactly when `x` is missing.
-4. `and`, `or` and `not` are ordinary two-valued logic over the results.
-
-Rule 4 meeting rule 1 has one consequence worth knowing. `not` flips a comparison that was false because of a missing value into true.
+1. A comparison, `in` or `starts_with` with a missing operand is **unknown**. That includes `!=`: `missing != 5` is unknown, so it never matches.
+2. `is_missing(x)` is true when `x` is missing and false otherwise, never unknown. It is how a rule says what it wants done with absent data.
+3. `not`, `and` and `or` follow Kleene's three-valued logic. `not unknown` is unknown, `false and anything` is false, `true or anything` is true, and every other combination with unknown is unknown.
+4. Arithmetic with a missing operand is missing, and so is division by zero. `lower(missing)` is missing.
+5. A rule matches only when its condition is **true**. That is exactly how SQL evaluates a `WHERE` clause.
 
 | `:amount:` | `:amount: > 100` | `not :amount: > 100` | `:amount: <= 100` | `is_missing(:amount:)` |
 |---|---|---|---|---|
 | 150 | true | false | false | false |
 | 50 | false | true | true | false |
-| missing | false | **true** | **false** | true |
+| missing | unknown | unknown | unknown | true |
 
-So `not :amount: > 100` and `:amount: <= 100` are different rules, and the checker never rewrites one into the other. A rule matches a payment with a missing field only when its author wrote `not` or `is_missing`. Comparisons never match absent data by accident, and a rule that wants absent data says so.
+So `not (x > 100)` and `x <= 100` agree on every row, and so do `not (x = "a")` and `x != "a"`. A comparison never matches absent data, whichever way it is written. A rule that wants absent data says so: `not :amount: > 100 or is_missing(:amount:)`.
 
-**Why two-valued logic and not SQL's three-valued logic.** In SQL, a comparison with NULL is unknown, and `NOT unknown` is still unknown. Under that rule, neither `x > 100` nor `not x > 100` ever matches a missing `x`. That sounds principled, and it surprises analysts writing exclusions. "Block unless the score is high" would silently skip every unscored payment, and nothing would tell the author. With two values, `and`, `or` and `not` keep every law of Boolean algebra, De Morgan's included, so an analyst can rearrange a rule without changing it. What does not hold is `not (a < b)` being the same as `a >= b`, which the table shows and which the language is honest about. There is also an engineering reason. Two-valued logic needs one bitmap per node in the vectorized evaluator, and three-valued logic needs two.
+**Why this, and how it got here.** The first version used two-valued logic, where a comparison with a missing value is false and `not` flips it to true. It is simpler, and it keeps every Boolean law. Checking it against Stripe's rules reference showed that it disagreed with Radar in exactly one place. Stripe's "Missing attributes" section says that `NOT` over a comparison with a missing feature "always returns false". Under two-valued logic `not :amount: > 100` matched every payment with no amount while `:amount: <= 100` matched none. An analyst reading the rule cannot see that difference, and a rule written by someone who learned Radar would block customers they never meant to block. Three-valued logic keeps the negated and the rewritten forms equal, matches Radar and SQL, and still obeys De Morgan's laws. What it gives up is the law of the excluded middle: `x > 100 or not x > 100` does not match a missing `x`. The switch was checked the same way as everything else. The reference interpreter was rewritten with an explicit third value, the two evaluators agreed on every row of the differential test, and a planted "two-valued `not`" bug was caught by both evaluators' tests and by the fuzzer within a second.
 
-**Where this differs from Radar, on purpose.** Stripe's rules reference has a "Missing attributes" section. RiskGate's rule 1 matches it, since a Radar comparison with a missing value is false. Radar's `NOT` does not follow two-valued logic, though. Stripe says that using `NOT` with a comparison containing a missing feature "always returns false". So in Radar, `not :amount: > 100` does not match a missing amount, and in RiskGate it does. This is the one place RiskGate deliberately departs from the semantics it otherwise copies. The reasons are the algebra and the bitmap argument above. The cost is that an analyst who learned Radar can be surprised, and a surprise in a block rule means blocked customers. Two things limit that. The table above is in the rule documentation, and the backtest shows a rule's matches on real history before it can go live, including the payments it matches only because a field is missing. A linter warning for `not` over a comparison on a field that is often missing would be the next step, and it is listed under [what I would do next](#what-i-would-do-next).
+**No third value at run time.** Both evaluators compile each condition node to answer one question, "is it true?" or "is it false?", and `not` switches the question. A missing operand answers no to both. That is Kleene logic exactly, and it costs one closure per node online and one bitmap per node in the vectorized evaluator, the same as two-valued logic did.
 
 ### Evaluation order
 

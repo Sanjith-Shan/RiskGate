@@ -156,7 +156,7 @@ What the tests are there to prove.
 - [One feature implementation, and point-in-time correctness](DESIGN.md#one-feature-implementation-and-point-in-time-correctness)
 - [Velocity state: exact, bucketed ring, sketch](DESIGN.md#velocity-state)
 - [Why the model feeds the rules](DESIGN.md#why-the-model-feeds-rules-instead-of-deciding), and [what `risk_score` means](DESIGN.md#calibration-and-what-risk_score-means)
-- [Missing values and two-valued logic](DESIGN.md#types-and-missing-values), including where RiskGate differs from Radar
+- [Missing values and three-valued logic](DESIGN.md#types-and-missing-values), matching Radar and SQL `WHERE`
 - [The backtester and label maturity](DESIGN.md#the-backtester)
 - [Fail open, and what it costs](DESIGN.md#fail-open-and-what-it-costs)
 - [Reading list and credits](DESIGN.md#reading-list-and-credits)
