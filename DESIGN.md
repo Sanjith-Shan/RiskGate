@@ -539,7 +539,6 @@ Real bugs found by tests, fuzzing and parity checks, each with a regression test
 **3D Secure, the fourth action.** Radar evaluates request-3DS rules before allow rules. A 3DS rule asks the cardholder's bank to authenticate the payment, which moves fraud liability and adds friction. RiskGate leaves it out because real 3DS needs a card network and an issuer, and a simulated challenge would be a guess about how often customers abandon a payment, not a result. The rule language already reserves the place. It would be one more action evaluated first, with one more outcome for the backtester to report.
 
 **Other things, in order.**
-- A linter warning when `not` wraps a comparison on a field that is often missing, since that is where RiskGate's semantics and Radar's differ. The warning would give the share of payments the field is missing on, from the backtest table.
 - Label arrival times from Clearinghouse's webhooks instead of a simulation, which experiment 8 starts to provide.
 - Drift monitoring on `risk_score`'s calibration, since a threshold means what it means only while the calibration holds.
 - A rule-coverage view across the whole rule set, extending the unreachable-rule check from one rule to all of them.
