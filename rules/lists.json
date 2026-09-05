@@ -1,0 +1,9 @@
+{
+  "trusted_domains": [
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com",
+    "aol.com", "comcast.net", "msn.com", "live.com", "att.net", "me.com"
+  ],
+  "disposable_domains": [
+    "anonymous.com", "mail.com", "protonmail.com", "gmx.de", "yandex.ru"
+  ]
+}
