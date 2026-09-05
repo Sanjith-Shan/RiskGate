@@ -1,0 +1,4 @@
+{
+  "features": ["amount", "purchaser_email_domain", "card_txn_count_1h", "distinct_cards_per_device_24h"],
+  "categorical": {"purchaser_email_domain": ["anonymous.com", "gmail.com"]}
+}

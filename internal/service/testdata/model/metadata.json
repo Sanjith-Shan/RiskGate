@@ -1,0 +1,6 @@
+{
+  "note": "Hand-written test fixture: three trees' worth of made-up splits over real catalog fields. Not a trained model.",
+  "feature_names": ["amount", "purchaser_email_domain", "card_txn_count_1h", "distinct_cards_per_device_24h"],
+  "feature_stats": {"amount": {"p50": 68.5}, "card_txn_count_1h": {"p50": 0}, "distinct_cards_per_device_24h": {"p50": 1}},
+  "data": {"synthetic": true}
+}

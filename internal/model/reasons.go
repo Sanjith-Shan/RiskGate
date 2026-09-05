@@ -82,6 +82,12 @@ func describe(f schema.Field, v float64, str string, known bool, st *Stat) strin
 		if !ok {
 			continue
 		}
+		// Counts and sums are missing only when the payment has no key for
+		// the entity at all (no card1, no device info, ...); say that,
+		// rather than print a count of NaN.
+		if math.IsNaN(v) && (strings.HasPrefix(rest, "txn_count_") || strings.HasPrefix(rest, "amount_sum_")) {
+			return "no " + strings.TrimPrefix(noun, "this ") + " to track on this payment"
+		}
 		for w, span := range windowNoun {
 			if rest == "txn_count_"+w {
 				return fmt.Sprintf("%s on %s in %s", plural(v, "earlier payment"), noun, span) + typical(count)
