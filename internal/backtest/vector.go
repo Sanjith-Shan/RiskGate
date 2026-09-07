@@ -119,12 +119,38 @@ func EvalMany(t *Table, progs []*Program, lo, hi, workers int) []*Bitmap {
 		return out
 	}
 	start := lo &^ 63 // chunks own whole words of the output
+	forChunksFrom(start, hi, workers, nf, nw, func(c *chunk) {
+		w0 := c.lo >> 6
+		for i, p := range progs {
+			p.root.eval(c, out[i].W[w0:w0+words(c.n)])
+		}
+	})
+	if r := lo & 63; r != 0 {
+		for _, b := range out {
+			b.W[lo>>6] &^= 1<<uint(r) - 1
+		}
+	}
+	return out
+}
+
+// forChunks calls f for every chunk of rows [0, n), from workers goroutines
+// (<= 0 means GOMAXPROCS), each with its own scratch of nf float and nw word
+// buffers.
+func forChunks(n, workers, nf, nw int, f func(c *chunk)) {
+	forChunksFrom(0, n, workers, nf, nw, f)
+}
+
+// forChunksFrom is forChunks over rows [start, hi); start must be a
+// multiple of 64, so each chunk owns whole words of a row bitmap.
+func forChunksFrom(start, hi, workers, nf, nw int, f func(c *chunk)) {
+	if start >= hi {
+		return
+	}
 	nchunks := (hi - start + chunkRows - 1) / chunkRows
 	if workers <= 0 {
 		workers = runtime.GOMAXPROCS(0)
 	}
 	workers = min(workers, nchunks)
-
 	var next atomic.Int64
 	run := func() {
 		s := newScratch(nf, nw)
@@ -134,28 +160,18 @@ func EvalMany(t *Table, progs []*Program, lo, hi, workers int) []*Bitmap {
 				return
 			}
 			clo := start + k*chunkRows
-			c := chunk{lo: clo, n: min(chunkRows, hi-clo), s: s}
-			w0 := clo >> 6
-			for i, p := range progs {
-				p.root.eval(&c, out[i].W[w0:w0+words(c.n)])
-			}
+			f(&chunk{lo: clo, n: min(chunkRows, hi-clo), s: s})
 		}
 	}
 	if workers <= 1 {
 		run()
-	} else {
-		var wg sync.WaitGroup
-		for range workers {
-			wg.Go(run)
-		}
-		wg.Wait()
+		return
 	}
-	if r := lo & 63; r != 0 {
-		for _, b := range out {
-			b.W[lo>>6] &^= 1<<uint(r) - 1
-		}
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Go(run)
 	}
-	return out
+	wg.Wait()
 }
 
 type scratch struct {
@@ -535,7 +551,7 @@ func (c *compiler) inNum(x numC, set []float64, want bool) boolC {
 	if x.konst {
 		return konst(!math.IsNaN(x.v) && containsNum(set, x.v) == want)
 	}
-	return boolC{n: inNumNode{x: x.n, set: set, want: want}}
+	return boolC{n: newInNum(x.n, set, want)}
 }
 
 // containsNum reports whether v is in the sorted set. NaN is in no set:

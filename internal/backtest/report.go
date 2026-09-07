@@ -6,6 +6,7 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Sanjith-Shan/RiskGate/internal/rules"
@@ -159,6 +160,13 @@ type Backtester struct {
 	Current   *rules.RuleSet
 	Decisions *Decisions
 	workers   int
+
+	// The last window resolved, reused while the options that define it
+	// stay the same, as they do while an analyst edits a rule on the page:
+	// resolving one is a pass over every row, and costs more than
+	// evaluating a typical rule.
+	mu   sync.Mutex
+	last *window
 }
 
 // NewBacktester evaluates the current rule set over t once. current may be
@@ -185,17 +193,46 @@ func Backtest(t *Table, current *rules.RuleSet, proposed *rules.CompiledRule, op
 
 // window is a resolved Options.
 type window struct {
+	opt0              Options // as given, the cache key
 	opt               Options
 	from, to, asOf    int64
 	cutoff            int64 // payments at or after it are immature
 	epoch             time.Time
 	counted, immature *Bitmap
 	fraud, legit      *Bitmap // labels as the backtest counts them
+	period            Outcome // every counted payment
+	immatureCounts    Counts
 }
 
 func (b *Backtester) window(opt Options) (*window, error) {
+	b.mu.Lock()
+	last := b.last
+	b.mu.Unlock()
+	if last != nil && sameWindow(last.opt0, opt) {
+		return last, nil
+	}
+	w, err := b.resolve(opt)
+	if err != nil {
+		return nil, err
+	}
+	b.mu.Lock()
+	b.last = w
+	b.mu.Unlock()
+	return w, nil
+}
+
+// sameWindow reports whether two Options select the same payments with the
+// same labels.
+func sameWindow(a, b Options) bool {
+	return a.From == b.From && a.To == b.To && a.AsOf == b.AsOf && a.Maturity == b.Maturity &&
+		a.UseLabelTime == b.UseLabelTime && a.Epoch.Equal(b.Epoch)
+}
+
+// resolve builds a window. The result is read-only, so it can be shared by
+// concurrent Runs.
+func (b *Backtester) resolve(opt Options) (*window, error) {
 	t := b.Table
-	w := &window{opt: opt, from: opt.From, to: opt.To, asOf: opt.AsOf, epoch: opt.Epoch}
+	w := &window{opt: opt, opt0: opt, from: opt.From, to: opt.To, asOf: opt.AsOf, epoch: opt.Epoch}
 	// Zero bounds mean the table's own ends, so that the summary's "over
 	// the N days" is the span of the data, not of the clock.
 	if lo, hi := t.TimeSpan(); t.N > 0 {
@@ -251,6 +288,8 @@ func (b *Backtester) window(opt Options) (*window, error) {
 			w.legit.Set(i)
 		}
 	}
+	w.period = b.outcome(w.counted, w)
+	w.immatureCounts = b.counts(w.immature)
 	return w, nil
 }
 
@@ -323,9 +362,9 @@ func (b *Backtester) Run(proposed *rules.CompiledRule, opt Options) (*Report, er
 		From:         w.epoch.Add(time.Duration(w.from) * time.Second),
 		To:           w.epoch.Add(time.Duration(w.to) * time.Second),
 		AsOf:         w.epoch.Add(time.Duration(w.asOf) * time.Second),
-		Immature:     b.counts(w.immature),
+		Immature:     w.immatureCounts,
 		UseLabelTime: opt.UseLabelTime,
-		Period:       b.outcome(w.counted, w),
+		Period:       w.period,
 		Matched:      b.outcome(match, w),
 		Changed:      b.outcome(changed, w),
 		Warnings:     []string{},
@@ -358,7 +397,7 @@ func (b *Backtester) Run(proposed *rules.CompiledRule, opt Options) (*Report, er
 	if proposed.Shadow {
 		r.Warnings = append(r.Warnings, "This is a shadow rule; the backtest shows what it would do if it were enforced.")
 	}
-	b.samples(r, proposed, changed, match, w)
+	b.samples(r, proposed, changed, match, w, opt.Samples)
 	r.SummaryText = r.Summary()
 	return r, nil
 }
@@ -431,12 +470,11 @@ func pluralWord(n int, one, many string) string {
 // itself reads.
 var sampleBase = []string{"amount", "product_code", "card_network", "card_type", "purchaser_email_domain", "device_type", "risk_score"}
 
-// samples picks up to opt.Samples payments the rule changes (or, if it
-// changes none, that it matches), spread evenly over the period rather
-// than the first few, so they show the rule's typical catch.
-func (b *Backtester) samples(r *Report, proposed *rules.CompiledRule, changed, match *Bitmap, w *window) {
+// samples picks up to want (Options.Samples) payments the rule changes
+// (or, if it changes none, that it matches), spread evenly over the period
+// rather than the first few, so they show the rule's typical catch.
+func (b *Backtester) samples(r *Report, proposed *rules.CompiledRule, changed, match *Bitmap, w *window, want int) {
 	t, d := b.Table, b.Decisions
-	want := w.opt.Samples
 	if want == 0 {
 		want = 10
 	}

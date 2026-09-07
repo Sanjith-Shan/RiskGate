@@ -7,6 +7,8 @@
 //	backtest sweep      -table features.rgt [-current rules.txt]
 //	backtest labeldelay -table features.rgt -rule 'block if ...'   experiment 7 (SIMULATED)
 //	backtest synth      -out synthetic.rgt -rows 590540
+//	backtest rulestats  -table features.rgt -rules baseline.rules -split valid
+//	backtest flag       -table features.rgt -rules baseline.rules -out predictions.csv
 //
 // -table takes a table file written by backtest.Table.Save, or "synthetic"
 // for a generated table (-rows, -seed, -missing, -edge). Numbers from a
@@ -46,11 +48,13 @@ var commands = map[string]func(args []string, out io.Writer) error{
 	"sweep":      sweep,
 	"labeldelay": labelDelay,
 	"synth":      synth,
+	"flag":       flagRows,
+	"rulestats":  rulestats,
 }
 
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 || commands[args[0]] == nil {
-		return errors.New("usage: backtest difftest|bench|run|sweep|labeldelay|synth [flags] (see -h on each)")
+		return errors.New("usage: backtest difftest|bench|run|sweep|labeldelay|synth|flag|rulestats [flags] (see -h on each)")
 	}
 	return commands[args[0]](args[1:], out)
 }
@@ -162,6 +166,7 @@ func bench(args []string, out io.Writer) error {
 	tf.register(fs, 590_540)
 	reps := fs.Int("reps", 7, "timed repetitions per case (best and median are reported)")
 	asJSON := fs.Bool("json", false, "print JSON")
+	proposedSrc := fs.String("proposed", `block if :risk_score: >= 80 and :amount: > 100`, "the proposed rule timed against the cached 50-rule baseline")
 	if err := parse(fs, args); err != nil {
 		return err
 	}
@@ -179,12 +184,18 @@ func bench(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
+	// A timing is only worth reporting if the two evaluators it compares
+	// give the same answer on this table.
+	checked, err := backtest.CheckRuleSet(set, t, rows)
+	if err != nil {
+		return err
+	}
 	// The page's latency: one proposed rule against a cached baseline.
 	bt, err := backtest.NewBacktester(t, set, 0)
 	if err != nil {
 		return err
 	}
-	proposed, err := rules.Load(`block if :risk_score: >= 80 and :amount: > 100`, e, 1)
+	proposed, err := rules.Load(*proposedSrc, e, 1)
 	if err != nil {
 		return err
 	}
@@ -193,9 +204,22 @@ func bench(args []string, out io.Writer) error {
 	if runErr != nil {
 		return runErr
 	}
+	// The same with a window the Backtester has not resolved before (the
+	// first run after the period changes): a new AsOf every time.
+	_, hi := t.TimeSpan()
+	asOf := hi + 1
+	coldBest, coldMed := timeIt(*reps, func() {
+		asOf++
+		_, runErr = bt.Run(proposed.Rules[0], backtest.Options{To: hi + 1, AsOf: asOf})
+	})
+	if runErr != nil {
+		return runErr
+	}
 	if *asJSON {
 		return json.NewEncoder(out).Encode(map[string]any{"machine": machine(), "cases": cases,
-			"backtest_run_best_ns": runBest, "backtest_run_median_ns": runMed})
+			"backtest_run_best_ns": runBest, "backtest_run_median_ns": runMed,
+			"backtest_run_new_window_best_ns": coldBest, "backtest_run_new_window_median_ns": coldMed,
+			"decisions_checked": checked})
 	}
 	fmt.Fprintf(out, "machine: %s\n", machine())
 	fmt.Fprintf(out, "Timings are indicative only if the machine was busy; best and median of %d runs.\n\n", *reps)
@@ -214,6 +238,8 @@ func bench(args []string, out io.Writer) error {
 	}
 	tw.Flush()
 	fmt.Fprintf(out, "\nBacktester.Run, one proposed rule against the cached 50-rule baseline: best %s, median %s\n", ms(runBest), ms(runMed))
+	fmt.Fprintf(out, "The same, first run over a new period (window not yet resolved): best %s, median %s\n", ms(coldBest), ms(coldMed))
+	fmt.Fprintf(out, "Vectorized and row-at-a-time decisions agree on all %s rows.\n", commas(checked))
 	return nil
 }
 
