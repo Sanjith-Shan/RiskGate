@@ -1,0 +1,417 @@
+{
+ "SIMULATED": true,
+ "note": "Every number in this file is SIMULATED. IEEE-CIS labels carry no arrival time; each fraud label's dispute arrival is drawn from an assumed lognormal delay (backtest.DefaultDelay unless stated). 'Today' is the end of the validation month (as-of day 151 from the TransactionDT epoch), so the naive last-30-days window is the validation month and the matured window lies in the training months. No test-month row is used.",
+ "command": "backtest labeldelay -table data/export_real/features.table -as-of-day 151 -rule RULE -json [-median-days M -maturity-days D]",
+ "rules": [
+  {
+   "simulated": true,
+   "model": {
+    "median_days": 30,
+    "sigma": 0.5,
+    "max_days": 120,
+    "seed": 1
+   },
+   "rule": "block if :product_code: = \"C\" and :card_type: = \"credit\" and :recipient_email_domain: = \"gmail.com\" and :amount: > 30",
+   "window_days": 30,
+   "maturity_days": 60,
+   "naive": {
+    "from": "2018-04-01T00:00:00Z",
+    "to": "2018-05-01T00:00:00Z",
+    "labels": "as of May 1, 2018",
+    "changed": {
+     "count": 788,
+     "dollars": 52963.855999999956
+    },
+    "caught": {
+     "count": 54,
+     "dollars": 3970.2249999999995
+    },
+    "precision": 0.06852791878172589,
+    "fraud_dollar_share": 0.05200015785148261
+   },
+   "naive_truth": {
+    "from": "2018-04-01T00:00:00Z",
+    "to": "2018-05-01T00:00:00Z",
+    "labels": "all (final)",
+    "changed": {
+     "count": 788,
+     "dollars": 52963.855999999956
+    },
+    "caught": {
+     "count": 276,
+     "dollars": 19494.592000000026
+    },
+    "precision": 0.350253807106599,
+    "fraud_dollar_share": 0.042146131281540745
+   },
+   "matured": {
+    "from": "2018-01-31T00:00:00Z",
+    "to": "2018-03-02T00:00:00Z",
+    "labels": "as of May 1, 2018",
+    "changed": {
+     "count": 841,
+     "dollars": 53533.44700000009
+    },
+    "caught": {
+     "count": 246,
+     "dollars": 16565.042999999994
+    },
+    "precision": 0.2925089179548157,
+    "fraud_dollar_share": 0.032949155203556194
+   },
+   "matured_truth": {
+    "from": "2018-01-31T00:00:00Z",
+    "to": "2018-03-02T00:00:00Z",
+    "labels": "all (final)",
+    "changed": {
+     "count": 841,
+     "dollars": 53533.44700000009
+    },
+    "caught": {
+     "count": 252,
+     "dollars": 17239.029000000002
+    },
+    "precision": 0.29964328180737215,
+    "fraud_dollar_share": 0.032921608183498464
+   },
+   "naive_understatement": 0.7963422368624081,
+   "matured_understatement": 0.039096517559081057,
+   "summary": "SIMULATED (dispute delays drawn from a lognormal with median 30 days, an assumption). A naive backtest of the 30 days ending April 30, 2018 credits this rule with $3,970 of fraud caught; with every dispute in, it catches $19,495, so the naive backtest understates it by 80%. Leaving out the last 60 days and backtesting the 30 days ending March 1, 2018 instead credits $16,565 against a true $17,239, an understatement of 4%."
+  },
+  {
+   "simulated": true,
+   "model": {
+    "median_days": 30,
+    "sigma": 0.5,
+    "max_days": 120,
+    "seed": 1
+   },
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "window_days": 30,
+   "maturity_days": 60,
+   "naive": {
+    "from": "2018-04-01T00:00:00Z",
+    "to": "2018-05-01T00:00:00Z",
+    "labels": "as of May 1, 2018",
+    "changed": {
+     "count": 2171,
+     "dollars": 197183.75200000114
+    },
+    "caught": {
+     "count": 86,
+     "dollars": 7735.756000000006
+    },
+    "precision": 0.039613081529249194,
+    "fraud_dollar_share": 0.10131932903061013
+   },
+   "naive_truth": {
+    "from": "2018-04-01T00:00:00Z",
+    "to": "2018-05-01T00:00:00Z",
+    "labels": "all (final)",
+    "changed": {
+     "count": 2171,
+     "dollars": 197183.75200000114
+    },
+    "caught": {
+     "count": 461,
+     "dollars": 42446.72999999987
+    },
+    "precision": 0.21234454168585906,
+    "fraud_dollar_share": 0.09176726833021723
+   },
+   "matured": {
+    "from": "2018-01-31T00:00:00Z",
+    "to": "2018-03-02T00:00:00Z",
+    "labels": "as of May 1, 2018",
+    "changed": {
+     "count": 2548,
+     "dollars": 217203.49100000024
+    },
+    "caught": {
+     "count": 316,
+     "dollars": 27132.976999999973
+    },
+    "precision": 0.12401883830455258,
+    "fraud_dollar_share": 0.053969595509502755
+   },
+   "matured_truth": {
+    "from": "2018-01-31T00:00:00Z",
+    "to": "2018-03-02T00:00:00Z",
+    "labels": "all (final)",
+    "changed": {
+     "count": 2548,
+     "dollars": 217203.49100000024
+    },
+    "caught": {
+     "count": 325,
+     "dollars": 28164.225999999973
+    },
+    "precision": 0.12755102040816327,
+    "fraud_dollar_share": 0.05378560550965482
+   },
+   "naive_understatement": 0.8177537822112556,
+   "matured_understatement": 0.036615563303603715,
+   "summary": "SIMULATED (dispute delays drawn from a lognormal with median 30 days, an assumption). A naive backtest of the 30 days ending April 30, 2018 credits this rule with $7,736 of fraud caught; with every dispute in, it catches $42,447, so the naive backtest understates it by 82%. Leaving out the last 60 days and backtesting the 30 days ending March 1, 2018 instead credits $27,133 against a true $28,164, an understatement of 4%."
+  },
+  {
+   "simulated": true,
+   "model": {
+    "median_days": 30,
+    "sigma": 0.5,
+    "max_days": 120,
+    "seed": 1
+   },
+   "rule": "review if :product_code: = \"W\" and :card_type: = \"credit\" and :uid_amount_sum_24h: > 500",
+   "window_days": 30,
+   "maturity_days": 60,
+   "naive": {
+    "from": "2018-04-01T00:00:00Z",
+    "to": "2018-05-01T00:00:00Z",
+    "labels": "as of May 1, 2018",
+    "changed": {
+     "count": 648,
+     "dollars": 448833.76000000077
+    },
+    "caught": {
+     "count": 12,
+     "dollars": 6834.5
+    },
+    "precision": 0.018518518518518517,
+    "fraud_dollar_share": 0.08951509771762507
+   },
+   "naive_truth": {
+    "from": "2018-04-01T00:00:00Z",
+    "to": "2018-05-01T00:00:00Z",
+    "labels": "all (final)",
+    "changed": {
+     "count": 648,
+     "dollars": 448833.76000000077
+    },
+    "caught": {
+     "count": 96,
+     "dollars": 56974.57999999999
+    },
+    "precision": 0.14814814814814814,
+    "fraud_dollar_share": 0.12317560318218723
+   },
+   "matured": {
+    "from": "2018-01-31T00:00:00Z",
+    "to": "2018-03-02T00:00:00Z",
+    "labels": "as of May 1, 2018",
+    "changed": {
+     "count": 879,
+     "dollars": 607675.9919999987
+    },
+    "caught": {
+     "count": 144,
+     "dollars": 52246.15
+    },
+    "precision": 0.16382252559726962,
+    "fraud_dollar_share": 0.10392164422019781
+   },
+   "matured_truth": {
+    "from": "2018-01-31T00:00:00Z",
+    "to": "2018-03-02T00:00:00Z",
+    "labels": "all (final)",
+    "changed": {
+     "count": 879,
+     "dollars": 607675.9919999987
+    },
+    "caught": {
+     "count": 154,
+     "dollars": 55845.100000000006
+    },
+    "precision": 0.1751990898748578,
+    "fraud_dollar_share": 0.10664814712988127
+   },
+   "naive_understatement": 0.8800429946126851,
+   "matured_understatement": 0.06444522437957856,
+   "summary": "SIMULATED (dispute delays drawn from a lognormal with median 30 days, an assumption). A naive backtest of the 30 days ending April 30, 2018 credits this rule with $6,835 of fraud caught; with every dispute in, it catches $56,975, so the naive backtest understates it by 88%. Leaving out the last 60 days and backtesting the 30 days ending March 1, 2018 instead credits $52,246 against a true $55,845, an understatement of 6%."
+  },
+  {
+   "simulated": true,
+   "model": {
+    "median_days": 30,
+    "sigma": 0.5,
+    "max_days": 120,
+    "seed": 1
+   },
+   "rule": "review if :card_network: = \"discover\" and :amount: > 100",
+   "window_days": 30,
+   "maturity_days": 60,
+   "naive": {
+    "from": "2018-04-01T00:00:00Z",
+    "to": "2018-05-01T00:00:00Z",
+    "labels": "as of May 1, 2018",
+    "changed": {
+     "count": 543,
+     "dollars": 237098.82000000033
+    },
+    "caught": {
+     "count": 12,
+     "dollars": 5854.849999999999
+    },
+    "precision": 0.022099447513812154,
+    "fraud_dollar_share": 0.07668409830595319
+   },
+   "naive_truth": {
+    "from": "2018-04-01T00:00:00Z",
+    "to": "2018-05-01T00:00:00Z",
+    "labels": "all (final)",
+    "changed": {
+     "count": 543,
+     "dollars": 237098.82000000033
+    },
+    "caught": {
+     "count": 93,
+     "dollars": 49319.959999999985
+    },
+    "precision": 0.1712707182320442,
+    "fraud_dollar_share": 0.10662677674712735
+   },
+   "matured": {
+    "from": "2018-01-31T00:00:00Z",
+    "to": "2018-03-02T00:00:00Z",
+    "labels": "as of May 1, 2018",
+    "changed": {
+     "count": 590,
+     "dollars": 264946.8600000005
+    },
+    "caught": {
+     "count": 77,
+     "dollars": 37851.97
+    },
+    "precision": 0.13050847457627118,
+    "fraud_dollar_share": 0.07529050388159894
+   },
+   "matured_truth": {
+    "from": "2018-01-31T00:00:00Z",
+    "to": "2018-03-02T00:00:00Z",
+    "labels": "all (final)",
+    "changed": {
+     "count": 590,
+     "dollars": 264946.8600000005
+    },
+    "caught": {
+     "count": 81,
+     "dollars": 39820.97
+    },
+    "precision": 0.13728813559322034,
+    "fraud_dollar_share": 0.07604664809293184
+   },
+   "naive_understatement": 0.8812884276467378,
+   "matured_understatement": 0.049446309318934234,
+   "summary": "SIMULATED (dispute delays drawn from a lognormal with median 30 days, an assumption). A naive backtest of the 30 days ending April 30, 2018 credits this rule with $5,855 of fraud caught; with every dispute in, it catches $49,320, so the naive backtest understates it by 88%. Leaving out the last 60 days and backtesting the 30 days ending March 1, 2018 instead credits $37,852 against a true $39,821, an understatement of 5%."
+  }
+ ],
+ "sensitivity": [
+  {
+   "median_days": 15,
+   "sigma": 0.5,
+   "maturity_days": 30,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.4701823674049793,
+   "matured_understatement": 0.035993799965782336,
+   "naive_caught_dollars": 22489.025999999973,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 48783.420000000115,
+   "matured_truth_dollars": 50604.882000000136
+  },
+  {
+   "median_days": 15,
+   "sigma": 0.5,
+   "maturity_days": 60,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.4701823674049793,
+   "matured_understatement": 0,
+   "naive_caught_dollars": 22489.025999999973,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 28164.225999999973,
+   "matured_truth_dollars": 28164.225999999973
+  },
+  {
+   "median_days": 15,
+   "sigma": 0.5,
+   "maturity_days": 90,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.4701823674049793,
+   "matured_understatement": 0,
+   "naive_caught_dollars": 22489.025999999973,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 35145.29299999995,
+   "matured_truth_dollars": 35145.29299999995
+  },
+  {
+   "median_days": 30,
+   "sigma": 0.5,
+   "maturity_days": 30,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.8177537822112556,
+   "matured_understatement": 0.27981567074892255,
+   "naive_caught_dollars": 7735.756000000006,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 36444.84300000002,
+   "matured_truth_dollars": 50604.882000000136
+  },
+  {
+   "median_days": 30,
+   "sigma": 0.5,
+   "maturity_days": 60,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.8177537822112556,
+   "matured_understatement": 0.036615563303603715,
+   "naive_caught_dollars": 7735.756000000006,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 27132.976999999973,
+   "matured_truth_dollars": 28164.225999999973
+  },
+  {
+   "median_days": 30,
+   "sigma": 0.5,
+   "maturity_days": 90,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.8177537822112556,
+   "matured_understatement": 0.0055719268011223955,
+   "naive_caught_dollars": 7735.756000000006,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 34949.46599999995,
+   "matured_truth_dollars": 35145.29299999995
+  },
+  {
+   "median_days": 45,
+   "sigma": 0.5,
+   "maturity_days": 30,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.9484773738754433,
+   "matured_understatement": 0.6018137933806473,
+   "naive_caught_dollars": 2186.9669999999996,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 20150.166000000012,
+   "matured_truth_dollars": 50604.882000000136
+  },
+  {
+   "median_days": 45,
+   "sigma": 0.5,
+   "maturity_days": 60,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.9484773738754433,
+   "matured_understatement": 0.17418920015767492,
+   "naive_caught_dollars": 2186.9669999999996,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 23258.321999999986,
+   "matured_truth_dollars": 28164.225999999973
+  },
+  {
+   "median_days": 45,
+   "sigma": 0.5,
+   "maturity_days": 90,
+   "rule": "review if :product_code: = \"C\" and :amount: > 50",
+   "naive_understatement": 0.9484773738754433,
+   "matured_understatement": 0.052474736801881305,
+   "naive_caught_dollars": 2186.9669999999996,
+   "naive_truth_dollars": 42446.72999999987,
+   "matured_caught_dollars": 33301.05299999995,
+   "matured_truth_dollars": 35145.29299999995
+  }
+ ]
+}

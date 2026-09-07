@@ -1,0 +1,52 @@
+# RiskGate rules-only baseline (experiment 1, "rules alone").
+#
+# A hand-written rule set of the kind a fraud analyst would start with. It
+# uses raw fields and RiskGate's velocity features only, never :risk_score:,
+# so it measures what rules can do without the model.
+#
+# Tuned on the VALIDATION month only (month 4 of the time split), with
+#   go run ./cmd/backtest rulestats -table data/export_real/features.table -rules rules/baseline.rules -split valid
+# The tuning log, with every candidate tried and its validation numbers, is
+# results/rules_baseline/TUNING.md. The test month was not looked at.
+# Because thresholds were chosen by looking at validation, the validation
+# numbers are optimistic; the test month is the honest measurement.
+#
+# Experiment 1 counts a payment as flagged when the final decision, in
+# Radar's order, is block or review (an allow match wins):
+#   go run ./cmd/backtest flag -table data/export_real/features.table -rules rules/baseline.rules -out data/rules_predictions_real.csv
+#
+# Numbers in comments are validation-month counts (83,571 payments, 2,850
+# fraud), each rule on its own.
+
+# --- Allow: long-standing customers who are not in a burst ------------------
+# The approximate customer (uid) was first seen more than 90 days ago and
+# last paid more than 7 days ago. 3,724 matches, 0.8% fraud (base rate 3.4%).
+allow  if :uid_seconds_since_first: > 7776000 and :uid_seconds_since_last: > 604800
+
+# --- Block: the dataset's riskiest pattern ----------------------------------
+# Product C, credit card, recipient on gmail.com, over $30.
+# 788 matches, 35.0% fraud.
+block  if :product_code: = "C" and :card_type: = "credit" and :recipient_email_domain: = "gmail.com" and :amount: > 30
+
+# --- Review ------------------------------------------------------------------
+# Billing country code present and not the dominant one (87).
+# 413 matches, 13.8% fraud.
+review if :billing_country_code: != 87
+
+# Product C over $50. 2,171 matches, 21.2% fraud.
+review if :product_code: = "C" and :amount: > 50
+
+# Product C, the same card paid again within 3 minutes. 858 matches, 17.7% fraud.
+review if :product_code: = "C" and :card_seconds_since_last: < 180
+
+# Product C from a device model with more than 12 payments in the last hour.
+# device_info is a model string ("Windows", "iOS Device"), not one device.
+# 493 matches, 17.0% fraud.
+review if :product_code: = "C" and :device_txn_count_1h: > 12
+
+# Product W on a credit card, customer spent over $500 in the last 24 hours.
+# 648 matches, 14.8% fraud.
+review if :product_code: = "W" and :card_type: = "credit" and :uid_amount_sum_24h: > 500
+
+# Discover over $100. 543 matches, 17.1% fraud.
+review if :card_network: = "discover" and :amount: > 100

@@ -1,0 +1,58 @@
+{
+ "experiment": 3,
+ "data": "IEEE-CIS (real)",
+ "command": "backtest difftest -table TABLE -rules 10000 (rule-seed 1: 5,000 ungrounded; seed 2: 5,000 with constants drawn from the table)",
+ "rule_level": [
+  {
+   "table": "data/export_real/features.table",
+   "rules": 10000,
+   "grounded": 1985,
+   "rows": 590540,
+   "rule_row_checks": 5905400000,
+   "matches": 1461187769,
+   "trivial_rules": 4424,
+   "disagreements": 0,
+   "rules_with_disagreements": 0,
+   "wall_time": "42.485s",
+   "max_rss_bytes": 1045544960,
+   "load_before": "16:41  up 1 day,  2:08, 9 users, load averages: 14.95 19.06 30.63",
+   "load_after": "16:42  up 1 day,  2:09, 9 users, load averages: 32.11 23.00 31.48",
+   "nontrivial_rules": 5576
+  },
+  {
+   "table": "data/cache/table_scored_real.rgt",
+   "rules": 10000,
+   "grounded": 1971,
+   "rows": 590540,
+   "rule_row_checks": 5905400000,
+   "matches": 1468463892,
+   "trivial_rules": 4324,
+   "disagreements": 0,
+   "rules_with_disagreements": 0,
+   "wall_time": "46.686s",
+   "max_rss_bytes": 1110769664,
+   "load_before": "16:42  up 1 day,  2:09, 9 users, load averages: 32.11 23.00 31.48",
+   "load_after": "16:43  up 1 day,  2:09, 9 users, load averages: 45.73 28.31 33.03",
+   "nontrivial_rules": 5676
+  }
+ ],
+ "rule_set_level": {
+  "method": "backtest.CheckRuleSet: EvaluateRuleSet (vectorized, chunk-local Radar-order decision) against RuleSet.Evaluate on every row: action and deciding rule",
+  "sets": [
+   "RealisticRuleSet (50 rules)",
+   "rules/baseline.rules (8)",
+   "rules/default.rules (10, with a stand-in @disposable_domains list)"
+  ],
+  "tables": [
+   "data/export_real/features.table",
+   "data/cache/table_scored_real.rgt"
+  ],
+  "rows_each": 590540,
+  "mismatches": 0
+ },
+ "notes": [
+  "The first table has risk_score NaN on every row (as exported). The second is the same replay with risk_score from models/ieee (cmd/riskgate table -model models/ieee), so rules on risk_score split the data.",
+  "A trivial rule matches no row or every row; it still checks missing-value handling but not much else. Non-trivial rules are the informative count.",
+  "Run with the evaluator as modified in this session (branch-free numeric in-lists, chunk-local decisions). An earlier 6,000-rule run on the export table with the evaluator before those changes also found 0 disagreements (3,310 non-trivial rules, 3,543,240,000 checks)."
+ ]
+}

@@ -1,0 +1,1308 @@
+{
+ "experiment": 6,
+ "data": "IEEE-CIS (real), 590,540 rows",
+ "machine": "Apple M3 Pro, 12 CPUs, GOMAXPROCS=12, go1.26.5 darwin/arm64",
+ "WARNING": "Measured on a shared, heavily loaded machine (1-minute load average 13-46 during these runs; see loads). Every timing must be re-run on a quiet machine before it is quoted.",
+ "commands": {
+  "after": "backtest bench -table TABLE -reps 9 -json [-proposed 'block if :product_code: = \"C\" and :amount: > 50']",
+  "before": "the same command built from the tree before this session's evaluator changes (binary kept in the session scratchpad)"
+ },
+ "tables": {
+  "export": "data/export_real/features.table (risk_score NaN on every row, as exported)",
+  "scored": "data/cache/table_scored_real.rgt (same replay, risk_score from models/ieee)"
+ },
+ "method": "Each (table, version) was run 3 times interleaved before/after; each run times each case 9 times after one warm-up. min_best_ms is the best single timing across the 3 runs; median_of_run_medians_ms is the median of the 3 per-run medians. Row-at-a-time is RuleSet.Evaluate over a pre-built row store (free to it). Vectorized is EvaluateRuleSet, which also produces every rule's full match bitmap. version 'after_c' is the after build timing a proposed rule that does work on both tables.",
+ "decisions_checked": "In every after run, EvaluateRuleSet and RuleSet.Evaluate agreed on action and deciding rule for all 590,540 rows (50-rule set).",
+ "cases": [
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 28.846917,
+   "median_of_run_medians_ms": 36.613417,
+   "all_best_ms": [
+    28.846917,
+    29.905917,
+    29.332209
+   ],
+   "all_median_ms": [
+    30.284041,
+    36.613417,
+    45.595292
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 31.642875,
+   "median_of_run_medians_ms": 44.559792,
+   "all_best_ms": [
+    34.564208,
+    47.546916,
+    31.642875
+   ],
+   "all_median_ms": [
+    44.559792,
+    52.23975,
+    36.753167
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 34.583,
+   "median_of_run_medians_ms": 47.357166,
+   "all_best_ms": [
+    34.583,
+    36.0025,
+    35.521916
+   ],
+   "all_median_ms": [
+    61.353417,
+    41.330375,
+    47.357166
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 8.439375,
+   "median_of_run_medians_ms": 10.762208,
+   "all_best_ms": [
+    9.579583,
+    9.944959,
+    8.439375
+   ],
+   "all_median_ms": [
+    10.762208,
+    13.374833,
+    9.180292
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 10.527,
+   "median_of_run_medians_ms": 12.257375,
+   "all_best_ms": [
+    10.740375,
+    10.669333,
+    10.527
+   ],
+   "all_median_ms": [
+    12.257375,
+    12.689084,
+    11.42725
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 7.93975,
+   "median_of_run_medians_ms": 9.248875,
+   "all_best_ms": [
+    7.93975,
+    8.098584,
+    10.865917
+   ],
+   "all_median_ms": [
+    8.262416,
+    9.248875,
+    13.157875
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 1.716583,
+   "median_of_run_medians_ms": 1.867834,
+   "all_best_ms": [
+    1.716583,
+    1.831667,
+    1.791625
+   ],
+   "all_median_ms": [
+    1.826917,
+    1.904167,
+    1.867834
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 1.774208,
+   "median_of_run_medians_ms": 2.495541,
+   "all_best_ms": [
+    2.036458,
+    2.260583,
+    1.774208
+   ],
+   "all_median_ms": [
+    3.070459,
+    2.495541,
+    1.904542
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 1.581042,
+   "median_of_run_medians_ms": 1.684584,
+   "all_best_ms": [
+    1.646,
+    1.614292,
+    1.581042
+   ],
+   "all_median_ms": [
+    1.746791,
+    1.684584,
+    1.645375
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 0.355208,
+   "median_of_run_medians_ms": 0.52825,
+   "all_best_ms": [
+    0.355208,
+    0.435292,
+    0.513042
+   ],
+   "all_median_ms": [
+    0.47,
+    0.52825,
+    0.589417
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 0.490625,
+   "median_of_run_medians_ms": 0.892667,
+   "all_best_ms": [
+    0.790208,
+    0.722792,
+    0.490625
+   ],
+   "all_median_ms": [
+    1.04225,
+    0.892667,
+    0.671583
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 1.042167,
+   "median_of_run_medians_ms": 1.194833,
+   "all_best_ms": [
+    1.151291,
+    1.042167,
+    1.068083
+   ],
+   "all_median_ms": [
+    1.194833,
+    1.174083,
+    1.292375
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 78.155,
+   "median_of_run_medians_ms": 79.320667,
+   "all_best_ms": [
+    78.662125,
+    78.45825,
+    78.155
+   ],
+   "all_median_ms": [
+    79.320667,
+    80.153542,
+    78.5025
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 80.340791,
+   "median_of_run_medians_ms": 123.663125,
+   "all_best_ms": [
+    105.373875,
+    149.253375,
+    80.340791
+   ],
+   "all_median_ms": [
+    123.663125,
+    247.873542,
+    83.76675
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 78.29475,
+   "median_of_run_medians_ms": 80.293084,
+   "all_best_ms": [
+    79.357,
+    78.29475,
+    78.906833
+   ],
+   "all_median_ms": [
+    82.331,
+    78.81325,
+    80.293084
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 10.46425,
+   "median_of_run_medians_ms": 13.734708,
+   "all_best_ms": [
+    10.46425,
+    11.817084,
+    13.189709
+   ],
+   "all_median_ms": [
+    13.225083,
+    13.969458,
+    13.734708
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 15.724584,
+   "median_of_run_medians_ms": 27.745209,
+   "all_best_ms": [
+    21.956667,
+    16.165375,
+    15.724584
+   ],
+   "all_median_ms": [
+    27.745209,
+    28.158292,
+    19.434125
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 10.831125,
+   "median_of_run_medians_ms": 13.409084,
+   "all_best_ms": [
+    11.522583,
+    13.9675,
+    10.831125
+   ],
+   "all_median_ms": [
+    13.409084,
+    14.571875,
+    12.157375
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 31.346792,
+   "median_of_run_medians_ms": 32.254,
+   "all_best_ms": [
+    31.735709,
+    31.550125,
+    31.346792
+   ],
+   "all_median_ms": [
+    32.436125,
+    31.974167,
+    32.254
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 32.507209,
+   "median_of_run_medians_ms": 40.276708,
+   "all_best_ms": [
+    39.859709,
+    34.900541,
+    32.507209
+   ],
+   "all_median_ms": [
+    44.035375,
+    40.276708,
+    33.8365
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 47.630334,
+   "median_of_run_medians_ms": 48.547458,
+   "all_best_ms": [
+    47.742083,
+    47.630334,
+    47.682875
+   ],
+   "all_median_ms": [
+    48.547458,
+    48.109667,
+    49.528625
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 3.825833,
+   "median_of_run_medians_ms": 4.977333,
+   "all_best_ms": [
+    3.825833,
+    4.87175,
+    4.262708
+   ],
+   "all_median_ms": [
+    4.977333,
+    5.390708,
+    4.668875
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 4.918834,
+   "median_of_run_medians_ms": 7.154792,
+   "all_best_ms": [
+    5.328167,
+    6.5465,
+    4.918834
+   ],
+   "all_median_ms": [
+    6.647709,
+    7.971084,
+    7.154792
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 7.93725,
+   "median_of_run_medians_ms": 9.028875,
+   "all_best_ms": [
+    8.267167,
+    8.779708,
+    7.93725
+   ],
+   "all_median_ms": [
+    9.028875,
+    9.703834,
+    8.738416
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "checked",
+   "method": "",
+   "threads": 0,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 0.59054,
+   "median_of_run_medians_ms": 0.0,
+   "all_best_ms": [
+    0.59054,
+    0.59054,
+    0.59054
+   ],
+   "all_median_ms": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "checked",
+   "method": "",
+   "threads": 0,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 0.59054,
+   "median_of_run_medians_ms": 0.0,
+   "all_best_ms": [
+    0.59054,
+    0.59054,
+    0.59054
+   ],
+   "all_median_ms": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "run",
+   "method": "cached window",
+   "threads": 0,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 0.604667,
+   "median_of_run_medians_ms": 0.8735,
+   "all_best_ms": [
+    0.604667,
+    0.684666,
+    0.798625
+   ],
+   "all_median_ms": [
+    0.681375,
+    0.890166,
+    0.8735
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "run",
+   "method": "cached window",
+   "threads": 0,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 0.97825,
+   "median_of_run_medians_ms": 1.184917,
+   "all_best_ms": [
+    1.186208,
+    1.01525,
+    0.97825
+   ],
+   "all_median_ms": [
+    1.325,
+    1.184917,
+    1.098708
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "run",
+   "method": "cached window",
+   "threads": 0,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 3.56625,
+   "median_of_run_medians_ms": 3.883666,
+   "all_best_ms": [
+    3.56625,
+    4.021459,
+    3.736208
+   ],
+   "all_median_ms": [
+    3.784083,
+    4.767458,
+    3.883666
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "run",
+   "method": "new window",
+   "threads": 0,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 3.592333,
+   "median_of_run_medians_ms": 3.788166,
+   "all_best_ms": [
+    3.592333,
+    3.78325,
+    3.706875
+   ],
+   "all_median_ms": [
+    3.788166,
+    4.907583,
+    3.754333
+   ]
+  },
+  {
+   "table": "export",
+   "workload": "run",
+   "method": "new window",
+   "threads": 0,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 3.985708,
+   "median_of_run_medians_ms": 4.354,
+   "all_best_ms": [
+    4.239334,
+    4.125708,
+    3.985708
+   ],
+   "all_median_ms": [
+    5.000167,
+    4.30875,
+    4.354
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 29.104917,
+   "median_of_run_medians_ms": 43.115167,
+   "all_best_ms": [
+    37.889625,
+    29.104917,
+    32.017042
+   ],
+   "all_median_ms": [
+    53.198,
+    37.040458,
+    43.115167
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 27.288167,
+   "median_of_run_medians_ms": 34.888167,
+   "all_best_ms": [
+    27.288167,
+    33.349375,
+    29.042333
+   ],
+   "all_median_ms": [
+    31.282875,
+    42.494041,
+    34.888167
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 25.214,
+   "median_of_run_medians_ms": 42.148708,
+   "all_best_ms": [
+    31.219167,
+    53.912083,
+    25.214
+   ],
+   "all_median_ms": [
+    42.148708,
+    64.436667,
+    30.972458
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 9.371083,
+   "median_of_run_medians_ms": 12.160375,
+   "all_best_ms": [
+    10.742583,
+    9.371083,
+    9.835
+   ],
+   "all_median_ms": [
+    14.5205,
+    10.474042,
+    12.160375
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 8.140042,
+   "median_of_run_medians_ms": 10.996833,
+   "all_best_ms": [
+    8.140042,
+    10.018417,
+    8.817542
+   ],
+   "all_median_ms": [
+    9.072792,
+    13.39575,
+    10.996833
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 7.673167,
+   "median_of_run_medians_ms": 9.296084,
+   "all_best_ms": [
+    8.0335,
+    9.189209,
+    7.673167
+   ],
+   "all_median_ms": [
+    9.296084,
+    16.429958,
+    8.518709
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 1.834375,
+   "median_of_run_medians_ms": 3.024375,
+   "all_best_ms": [
+    2.65975,
+    1.834375,
+    2.099166
+   ],
+   "all_median_ms": [
+    3.645125,
+    2.087666,
+    3.024375
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 1.878209,
+   "median_of_run_medians_ms": 2.153666,
+   "all_best_ms": [
+    1.878209,
+    2.314333,
+    1.92775
+   ],
+   "all_median_ms": [
+    1.998667,
+    2.922458,
+    2.153666
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 1.568542,
+   "median_of_run_medians_ms": 1.808042,
+   "all_best_ms": [
+    1.661542,
+    1.585709,
+    1.568542
+   ],
+   "all_median_ms": [
+    1.808042,
+    2.2,
+    1.655417
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 0.47425,
+   "median_of_run_medians_ms": 1.076959,
+   "all_best_ms": [
+    0.990792,
+    0.47425,
+    0.755458
+   ],
+   "all_median_ms": [
+    1.526875,
+    0.659708,
+    1.076959
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 0.554125,
+   "median_of_run_medians_ms": 0.9645,
+   "all_best_ms": [
+    0.554125,
+    0.854875,
+    0.565084
+   ],
+   "all_median_ms": [
+    0.660458,
+    1.178292,
+    0.9645
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "1 rule",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 1.067958,
+   "median_of_run_medians_ms": 1.687583,
+   "all_best_ms": [
+    1.067958,
+    1.207125,
+    1.080166
+   ],
+   "all_median_ms": [
+    1.164833,
+    1.756625,
+    1.687583
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 57.605125,
+   "median_of_run_medians_ms": 70.325958,
+   "all_best_ms": [
+    62.361958,
+    61.421875,
+    57.605125
+   ],
+   "all_median_ms": [
+    70.325958,
+    78.392792,
+    61.331541
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 57.334625,
+   "median_of_run_medians_ms": 70.000583,
+   "all_best_ms": [
+    57.334625,
+    59.664541,
+    61.165
+   ],
+   "all_median_ms": [
+    57.787083,
+    91.997958,
+    70.000583
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 1,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 56.841,
+   "median_of_run_medians_ms": 78.803834,
+   "all_best_ms": [
+    99.57425,
+    59.708208,
+    56.841
+   ],
+   "all_median_ms": [
+    118.141917,
+    78.803834,
+    56.966333
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 9.575334,
+   "median_of_run_medians_ms": 12.345625,
+   "all_best_ms": [
+    13.3885,
+    9.575334,
+    9.657208
+   ],
+   "all_median_ms": [
+    17.77125,
+    11.104792,
+    12.345625
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 9.900709,
+   "median_of_run_medians_ms": 13.163458,
+   "all_best_ms": [
+    10.547584,
+    9.900709,
+    10.413167
+   ],
+   "all_median_ms": [
+    12.641417,
+    13.163458,
+    13.76525
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "row-at-a-time",
+   "threads": 12,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 9.18125,
+   "median_of_run_medians_ms": 10.439792,
+   "all_best_ms": [
+    13.274625,
+    9.38675,
+    9.18125
+   ],
+   "all_median_ms": [
+    17.624875,
+    10.439792,
+    9.862375
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 32.563417,
+   "median_of_run_medians_ms": 41.613417,
+   "all_best_ms": [
+    33.2305,
+    35.880875,
+    32.563417
+   ],
+   "all_median_ms": [
+    42.312792,
+    41.613417,
+    35.539625
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 32.335042,
+   "median_of_run_medians_ms": 33.995375,
+   "all_best_ms": [
+    32.335042,
+    39.012583,
+    32.7305
+   ],
+   "all_median_ms": [
+    33.148,
+    48.428541,
+    33.995375
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 1,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 48.227708,
+   "median_of_run_medians_ms": 56.10825,
+   "all_best_ms": [
+    49.566084,
+    70.532875,
+    48.227708
+   ],
+   "all_median_ms": [
+    56.10825,
+    78.182916,
+    48.727542
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 4.833417,
+   "median_of_run_medians_ms": 5.981708,
+   "all_best_ms": [
+    4.833417,
+    5.291291,
+    5.285708
+   ],
+   "all_median_ms": [
+    5.588,
+    5.981708,
+    6.786459
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 4.880708,
+   "median_of_run_medians_ms": 6.089917,
+   "all_best_ms": [
+    4.880708,
+    7.31725,
+    5.12825
+   ],
+   "all_median_ms": [
+    6.089917,
+    8.581833,
+    5.681125
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "50-rule set",
+   "method": "vectorized",
+   "threads": 12,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 8.132417,
+   "median_of_run_medians_ms": 14.2115,
+   "all_best_ms": [
+    11.941542,
+    11.50925,
+    8.132417
+   ],
+   "all_median_ms": [
+    15.668375,
+    14.2115,
+    9.725667
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "checked",
+   "method": "",
+   "threads": 0,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 0.59054,
+   "median_of_run_medians_ms": 0.0,
+   "all_best_ms": [
+    0.59054,
+    0.59054,
+    0.59054
+   ],
+   "all_median_ms": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "checked",
+   "method": "",
+   "threads": 0,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 0.59054,
+   "median_of_run_medians_ms": 0.0,
+   "all_best_ms": [
+    0.59054,
+    0.59054,
+    0.59054
+   ],
+   "all_median_ms": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "run",
+   "method": "cached window",
+   "threads": 0,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 0.575666,
+   "median_of_run_medians_ms": 0.700292,
+   "all_best_ms": [
+    0.575666,
+    0.614917,
+    0.853167
+   ],
+   "all_median_ms": [
+    0.62525,
+    0.700292,
+    1.02075
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "run",
+   "method": "cached window",
+   "threads": 0,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 0.9235,
+   "median_of_run_medians_ms": 1.063417,
+   "all_best_ms": [
+    0.93625,
+    1.028,
+    0.9235
+   ],
+   "all_median_ms": [
+    1.063417,
+    1.128833,
+    0.979917
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "run",
+   "method": "cached window",
+   "threads": 0,
+   "version": "before",
+   "runs": 3,
+   "min_best_ms": 3.7515,
+   "median_of_run_medians_ms": 4.492666,
+   "all_best_ms": [
+    3.974541,
+    3.7515,
+    3.887
+   ],
+   "all_median_ms": [
+    4.506917,
+    4.492666,
+    4.008583
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "run",
+   "method": "new window",
+   "threads": 0,
+   "version": "after",
+   "runs": 3,
+   "min_best_ms": 3.600791,
+   "median_of_run_medians_ms": 4.984458,
+   "all_best_ms": [
+    3.600791,
+    3.629417,
+    4.365166
+   ],
+   "all_median_ms": [
+    4.984458,
+    3.688958,
+    5.553209
+   ]
+  },
+  {
+   "table": "scored",
+   "workload": "run",
+   "method": "new window",
+   "threads": 0,
+   "version": "after_c",
+   "runs": 3,
+   "min_best_ms": 3.905459,
+   "median_of_run_medians_ms": 4.143458,
+   "all_best_ms": [
+    3.905459,
+    4.179084,
+    3.993834
+   ],
+   "all_median_ms": [
+    4.078958,
+    4.566708,
+    4.143458
+   ]
+  }
+ ],
+ "loads": {
+  "export_after_1": [
+   "16:40  up 1 day,  2:07, 9 users, load averages: 15.01 20.00 31.86",
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.77 19.87 31.74"
+  ],
+  "export_after_2": [
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.77 19.87 31.74",
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.31 19.69 31.61"
+  ],
+  "export_after_3": [
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.31 19.69 31.61",
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.04 19.55 31.49"
+  ],
+  "export_before_1": [
+   "16:40  up 1 day,  2:07, 9 users, load averages: 15.01 20.00 31.86",
+   "16:40  up 1 day,  2:07, 9 users, load averages: 15.01 20.00 31.86"
+  ],
+  "export_before_2": [
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.77 19.87 31.74",
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.77 19.87 31.74"
+  ],
+  "export_before_3": [
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.31 19.69 31.61",
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.31 19.69 31.61"
+  ],
+  "scored_after_1": [
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.04 19.55 31.49",
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.12 19.47 31.39"
+  ],
+  "scored_after_2": [
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.75 19.51 31.34",
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.75 19.51 31.34"
+  ],
+  "scored_after_3": [
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.21 19.32 31.20",
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.21 19.32 31.20"
+  ],
+  "scored_before_1": [
+   "16:40  up 1 day,  2:07, 9 users, load averages: 14.04 19.55 31.49",
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.04 19.55 31.49"
+  ],
+  "scored_before_2": [
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.12 19.47 31.39",
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.75 19.51 31.34"
+  ],
+  "scored_before_3": [
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.75 19.51 31.34",
+   "16:41  up 1 day,  2:07, 9 users, load averages: 14.21 19.32 31.20"
+  ]
+ }
+}
