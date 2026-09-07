@@ -44,7 +44,7 @@ review if :uid_amount_ratio_7d: > 5 and :amount: > 200
 # --- Review: product C with no device information --------------------------
 # Product C is the dataset's highest-fraud product code, and missing device
 # data removes a signal the model leans on. is_missing makes the intent
-# explicit: comparisons against a missing value are always false.
+# explicit: a comparison with a missing value never matches.
 review if :product_code: = "C" and is_missing(:device_info:) and :risk_score: >= 30
 
 # --- Shadow: candidates being measured before they go live -----------------
