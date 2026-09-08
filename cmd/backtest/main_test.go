@@ -187,3 +187,22 @@ func TestFlagAndRuleStats(t *testing.T) {
 		}
 	}
 }
+
+// -lists replaces the built-in sample lists, so rules written against the
+// service's rules/lists.json backtest as they will run.
+func TestListsFlag(t *testing.T) {
+	defer func() { ruleLists = rules.SampleLists() }()
+	rule := `review if :purchaser_email_domain: in @only_here`
+	var out bytes.Buffer
+	if err := run([]string{"run", "-rows", "100", "-rule", rule}, &out); err == nil || !strings.Contains(err.Error(), "@only_here") {
+		t.Fatalf("unknown list accepted: %v", err)
+	}
+	lists := filepath.Join(t.TempDir(), "lists.json")
+	if err := os.WriteFile(lists, []byte(`{"only_here": ["gmail.com"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runOK(t, "run", "-rows", "100", "-lists", lists, "-rule", rule)
+	if err := run([]string{"run", "-rows", "100", "-lists", filepath.Join(t.TempDir(), "missing.json"), "-rule", rule}, &out); err == nil {
+		t.Error("a missing lists file was accepted")
+	}
+}

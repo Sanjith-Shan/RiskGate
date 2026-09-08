@@ -1,11 +1,12 @@
 {
-  "git_commit": "2e59251316e7bfe67102862b9f942e05896214a4",
-  "date_utc": "2026-09-23T23:49:44Z",
+  "git_commit": "f4c2c3d662ca233145553c9dc9d99c8566ba1b82",
+  "date_utc": "2026-09-24T00:02:00Z",
   "cpu": "Apple M3 Pro",
   "performance_cores": "6",
   "efficiency_cores": "6",
   "go_version": "go1.26.5",
   "gomaxprocs": 12,
-  "uptime": "16:49  up 1 day,  2:16, 9 users, load averages: 19.80 21.39 27.28",
-  "data": "IEEE-CIS Fraud Detection (real, Vesta via Kaggle), data/export_real/features.table"
+  "uptime": "17:02  up 1 day,  2:29, 9 users, load averages: 44.32 46.21 39.52",
+  "data": "IEEE-CIS Fraud Detection (real, Vesta via Kaggle), data/export_real/features.table",
+  "note": "Run after the sketch first/last-seen fix, with this session's uncommitted changes. provenance_before_fix.json is the earlier run."
 }

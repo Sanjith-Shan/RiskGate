@@ -13,45 +13,45 @@
     "end_bytes_per_key": 380.44054306145716,
     "peak_keys": 74808,
     "peak_bytes_estimated": 28468412,
-    "heap_bytes_measured": 24458840,
+    "heap_bytes_measured": 24455128,
     "no_evict_end_keys": 214468,
     "no_evict_end_bytes_estimated": 74057835,
-    "no_evict_heap_bytes_measured": 77938176,
+    "no_evict_heap_bytes_measured": 77717200,
     "eviction_features_identical": true
    },
    "timing": {
-    "add_median_ns": 1204.1556919578309,
-    "add_min_ns": 799.8695515882839,
-    "read_add_median_ns": 1187.7579472029502,
-    "read_add_min_ns": 874.5575083456908,
-    "read_median_ns": -255.33869905053854,
-    "read_min_ns": -1615.7161914735725,
+    "add_median_ns": 348.7133871128189,
+    "add_min_ns": 325.5751811992347,
+    "read_add_median_ns": 347.325908772287,
+    "read_add_min_ns": 314.7943906315427,
+    "read_median_ns": -5.525806764826233,
+    "read_min_ns": -36.34978534819366,
     "add_runs_ns": [
-     856.6214300916812,
-     872.9571946448773,
-     1253.9108977488033,
-     799.8695515882839,
-     1805.555571428241,
-     1204.1556919578309,
-     1302.3300989684426
+     325.5751811992347,
+     418.53998875674074,
+     342.67107509618074,
+     355.69189016307354,
+     401.72854989716814,
+     348.7133871128189,
+     328.2368279202978
     ],
     "read_add_runs_ns": [
-     874.5575083456908,
-     1104.4581101839406,
-     1263.5169250379981,
-     1438.4585063584564,
-     1187.7579472029502,
-     1153.550832371333,
-     2417.9051939924907
+     347.325908772287,
+     505.1395928135678,
+     567.3564633703405,
+     314.7943906315427,
+     395.7423142143946,
+     338.2755622207982,
+     337.37874746390474
     ],
     "read_runs_ns": [
-     425.8155208167172,
-     1533.4867533134054,
-     -1179.6951770964095,
-     -504.4590497062842,
-     -1615.7161914735725,
-     -255.33869905053854,
-     -75.21309133278312
+     203.48242560008876,
+     -34.28100660947242,
+     237.70260148279664,
+     -25.31550347812216,
+     5.75930562394668,
+     -36.34978534819366,
+     -5.525806764826233
     ]
    },
    "validation_metrics": {
@@ -69,45 +69,45 @@
     "end_bytes_per_key": 613.2787439112861,
     "peak_keys": 74808,
     "peak_bytes_estimated": 45060911,
-    "heap_bytes_measured": 36314568,
+    "heap_bytes_measured": 36317520,
     "no_evict_end_keys": 214468,
     "no_evict_end_bytes_estimated": 126441331,
-    "no_evict_heap_bytes_measured": 132047256,
+    "no_evict_heap_bytes_measured": 132637336,
     "eviction_features_identical": true
    },
    "timing": {
-    "add_median_ns": 2046.1651752768594,
-    "add_min_ns": 973.2139758802015,
-    "read_add_median_ns": 1900.2227738462357,
-    "read_add_min_ns": 1255.2747843306906,
-    "read_median_ns": 438.1990366676607,
-    "read_min_ns": -884.0108712990769,
+    "add_median_ns": 319.46303200164715,
+    "add_min_ns": 307.511333482935,
+    "read_add_median_ns": 339.09227453910734,
+    "read_add_min_ns": 318.3235484975443,
+    "read_median_ns": -21.07390402740885,
+    "read_min_ns": -280.91413580974705,
     "add_runs_ns": [
-     973.2139758802015,
-     1474.1289365866298,
-     4507.186374372772,
-     3101.4210617939707,
-     2505.0857819039047,
-     2046.1651752768594,
-     1245.990901866705
+     343.2968810366007,
+     319.46303200164715,
+     351.83415267235614,
+     316.7752626318943,
+     307.511333482935,
+     313.26372036209773,
+     326.02080465646753
     ],
     "read_add_runs_ns": [
-     1699.7928325378998,
-     2513.9905270913964,
-     1900.2227738462357,
-     3375.6423139830517,
-     3224.3575078830054,
-     1574.6863662757744,
-     1255.2747843306906
+     346.17596626096855,
+     339.09227453910734,
+     349.0213864835666,
+     325.731409293965,
+     324.5401142602005,
+     318.3235484975443,
+     344.46603020411374
     ],
     "read_runs_ns": [
-     1283.165406728762,
-     1419.641677127619,
-     255.04668590094806,
-     -884.0108712990769,
-     737.0798546332194,
-     -103.92378300401562,
-     438.1990366676607
+     -21.07390402740885,
+     -26.120596863794933,
+     -39.70682863226227,
+     -4.244054595767996,
+     602.8940126363681,
+     -280.91413580974705,
+     906.4321263359387
     ]
    },
    "error_by_family": [
@@ -689,49 +689,49 @@
    "name": "sketch",
    "memory": {
     "end_keys": 48245,
-    "end_bytes_estimated": 69479592,
-    "end_bytes_per_key": 1440.1407814281272,
+    "end_bytes_estimated": 64236712,
+    "end_bytes_per_key": 1331.4687946937506,
     "peak_keys": 74808,
-    "peak_bytes_estimated": 69479592,
-    "heap_bytes_measured": 69480024,
+    "peak_bytes_estimated": 64236712,
+    "heap_bytes_measured": 64238208,
     "no_evict_end_keys": -1,
-    "no_evict_end_bytes_estimated": 69479592,
-    "no_evict_heap_bytes_measured": 69485424,
+    "no_evict_end_bytes_estimated": 64236712,
+    "no_evict_heap_bytes_measured": 64242528,
     "eviction_features_identical": true
    },
    "timing": {
-    "add_median_ns": 1875.7149937884462,
-    "add_min_ns": 1120.3608062527328,
-    "read_add_median_ns": 3427.8170998174705,
-    "read_add_min_ns": 2333.991166175834,
-    "read_median_ns": 1988.615190689868,
-    "read_min_ns": 537.4913896537136,
+    "add_median_ns": 462.06301314721037,
+    "add_min_ns": 354.97540247860655,
+    "read_add_median_ns": 1352.9437547859038,
+    "read_add_min_ns": 1067.3852123379734,
+    "read_median_ns": 936.6843647485557,
+    "read_min_ns": 587.8863038970226,
     "add_runs_ns": [
-     1392.910269074791,
-     1423.9874369301738,
-     3871.8826802912145,
-     2663.205007298865,
-     1883.5499954888157,
-     1875.7149937884462,
-     1120.3608062527328
+     354.97540247860655,
+     402.4879811640706,
+     462.06301314721037,
+     524.9669231872558,
+     818.549734649828,
+     524.16392255569,
+     391.0787091766742
     ],
     "read_add_runs_ns": [
-     2333.991166175834,
-     4612.156137871045,
-     9751.64352159238,
-     7378.371676471745,
-     3427.8170998174705,
-     2940.0245044059234,
-     2361.3850434577416
+     1352.9437547859038,
+     1401.3337975611844,
+     1077.8351347224695,
+     1538.6477881316525,
+     1405.1751235948818,
+     1067.3852123379734,
+     1205.6717107104769
     ],
     "read_runs_ns": [
-     3349.9574302815095,
-     2257.4018462135978,
-     1101.685512563546,
-     1988.615190689868,
-     2030.387475986046,
-     1466.090476256528,
-     537.4913896537136
+     936.6843647485557,
+     712.8246062405071,
+     587.8863038970226,
+     1050.997288243739,
+     758.6104919306179,
+     2329.1217897591323,
+     3597.1036431855855
     ]
    },
    "error_by_family": [
@@ -774,14 +774,14 @@
     {
      "family": "recency",
      "features": 8,
-     "rows": 2943570,
-     "exact_share": 0.9999915069116753,
-     "mean_rel": 4.555070624404253e-06,
-     "mean_abs": 24.838707419901684,
-     "max_abs": 12353602,
-     "over_share": 0,
-     "under_share": 8.493088324721341e-06,
-     "missing_mismatch": 18
+     "rows": 2943588,
+     "exact_share": 0.8825165070655269,
+     "mean_rel": 623.5960123344545,
+     "mean_abs": 538118.468778579,
+     "max_abs": 15665776,
+     "over_share": 0.09340369644121392,
+     "under_share": 0.024079796493259246,
+     "missing_mismatch": 392560
     },
     {
      "family": "distinct",
@@ -895,27 +895,27 @@
     },
     {
      "Name": "card_seconds_since_first",
-     "Rows": 569135,
-     "MissingMismatch": 3,
-     "Exact": 569122,
-     "MeanAbs": 73.66823864285276,
-     "MaxAbs": 12353602,
-     "MeanRel": 1.2185130302113403e-05,
-     "Over": 0,
-     "Under": 13,
-     "exact_share": 0.9999771583192038
+     "Rows": 569138,
+     "MissingMismatch": 14448,
+     "Exact": 525757,
+     "MeanAbs": 314368.5088502261,
+     "MaxAbs": 15599674,
+     "MeanRel": 377.3235592354781,
+     "Over": 43381,
+     "Under": 0,
+     "exact_share": 0.9237777129624098
     },
     {
      "Name": "card_seconds_since_last",
-     "Rows": 569135,
-     "MissingMismatch": 3,
-     "Exact": 569135,
-     "MeanAbs": 0,
-     "MaxAbs": 0,
-     "MeanRel": 0,
+     "Rows": 569138,
+     "MissingMismatch": 14448,
+     "Exact": 552397,
+     "MeanAbs": 15863.129576658033,
+     "MaxAbs": 2498981,
+     "MeanRel": 0.011891906349429177,
      "Over": 0,
-     "Under": 0,
-     "exact_share": 1
+     "Under": 16741,
+     "exact_share": 0.9705853413407645
     },
     {
      "Name": "uid_txn_count_1h",
@@ -1015,27 +1015,27 @@
     },
     {
      "Name": "uid_seconds_since_first",
-     "Rows": 290782,
-     "MissingMismatch": 5,
-     "Exact": 290771,
-     "MeanAbs": 99.13288649228632,
-     "MaxAbs": 9540272,
-     "MeanRel": 1.9438390541065696e-05,
-     "Over": 0,
-     "Under": 11,
-     "exact_share": 0.999962170973444
+     "Rows": 290787,
+     "MissingMismatch": 179840,
+     "Exact": 68362,
+     "MeanAbs": 4527149.416634857,
+     "MaxAbs": 15665776,
+     "MeanRel": 5481.531126670051,
+     "Over": 222425,
+     "Under": 0,
+     "exact_share": 0.23509304061048122
     },
     {
      "Name": "uid_seconds_since_last",
-     "Rows": 290782,
-     "MissingMismatch": 5,
-     "Exact": 290782,
-     "MeanAbs": 0,
-     "MaxAbs": 0,
-     "MeanRel": 0,
+     "Rows": 290787,
+     "MissingMismatch": 179840,
+     "Exact": 238443,
+     "MeanAbs": 126090.42347491463,
+     "MaxAbs": 2505366,
+     "MeanRel": 0.07888668810548363,
      "Over": 0,
-     "Under": 0,
-     "exact_share": 1
+     "Under": 52344,
+     "exact_share": 0.8199919528727213
     },
     {
      "Name": "device_txn_count_1h",
@@ -1135,27 +1135,27 @@
     },
     {
      "Name": "device_seconds_since_first",
-     "Rows": 115845,
-     "MissingMismatch": 1,
-     "Exact": 115844,
-     "MeanAbs": 20.382770080711296,
-     "MaxAbs": 2361242,
-     "MeanRel": 7.0857699950118835e-06,
-     "Over": 0,
-     "Under": 1,
-     "exact_share": 0.9999913677759075
+     "Rows": 115846,
+     "MissingMismatch": 1990,
+     "Exact": 106792,
+     "MeanAbs": 359785.96130207344,
+     "MaxAbs": 15417004,
+     "MeanRel": 231.95483685737517,
+     "Over": 9054,
+     "Under": 0,
+     "exact_share": 0.9218445177218031
     },
     {
      "Name": "device_seconds_since_last",
-     "Rows": 115845,
-     "MissingMismatch": 1,
-     "Exact": 115845,
-     "MeanAbs": 0,
-     "MaxAbs": 0,
-     "MeanRel": 0,
+     "Rows": 115846,
+     "MissingMismatch": 1990,
+     "Exact": 114102,
+     "MeanAbs": 8223.42516789531,
+     "MaxAbs": 2392117,
+     "MeanRel": 0.006189817140453269,
      "Over": 0,
-     "Under": 0,
-     "exact_share": 1
+     "Under": 1744,
+     "exact_share": 0.9849455311361636
     },
     {
      "Name": "email_txn_count_1h",
@@ -1256,26 +1256,26 @@
     {
      "Name": "email_seconds_since_first",
      "Rows": 496023,
-     "MissingMismatch": 0,
-     "Exact": 496023,
-     "MeanAbs": 0,
-     "MaxAbs": 0,
-     "MeanRel": 0,
-     "Over": 0,
+     "MissingMismatch": 2,
+     "Exact": 495941,
+     "MeanAbs": 615.3691522368922,
+     "MaxAbs": 4740743,
+     "MeanRel": 0.002198082609448223,
+     "Over": 82,
      "Under": 0,
-     "exact_share": 1
+     "exact_share": 0.9998346850851674
     },
     {
      "Name": "email_seconds_since_last",
      "Rows": 496023,
-     "MissingMismatch": 0,
-     "Exact": 496023,
-     "MeanAbs": 0,
-     "MaxAbs": 0,
-     "MeanRel": 0,
+     "MissingMismatch": 2,
+     "Exact": 495971,
+     "MeanAbs": 24.972672638163957,
+     "MaxAbs": 1254753,
+     "MeanRel": 3.309030113517099e-05,
      "Over": 0,
-     "Under": 0,
-     "exact_share": 1
+     "Under": 52,
+     "exact_share": 0.9998951661515696
     },
     {
      "Name": "distinct_cards_per_device_24h",
@@ -1303,10 +1303,10 @@
     }
    ],
    "validation_metrics": {
-    "roc_auc": 0.8426683897340543,
-    "pr_auc": 0.293834671763467,
-    "recall_at_1pct_fpr": 0.22210526315789475,
-    "score_changed_share": 0.8149717007095763
+    "roc_auc": 0.8313501149833882,
+    "pr_auc": 0.28667311478925506,
+    "recall_at_1pct_fpr": 0.22771929824561404,
+    "score_changed_share": 0.9655263189383877
    }
   }
  ],
@@ -1321,11 +1321,10 @@
   "add: Add for every keyed event, with EvictIdle every 65,536 adds as the engine does. read_add: ReadAdd, the engine's per-key operation. read: ReadAdd minus Add over the last 100,000 payments' keyed events, each from the same warm state restored from a snapshot, per event; a derived difference, so noisy, and it can come out near zero or slightly negative when reading is nearly free.",
   "Bytes are each state's own estimate (Stats); heap_bytes_measured is the live heap after GC. The sketch's size is fixed; its per-key figure divides by the exact state's live keys.",
   "Feature error replays every row through exact and the approximate state in lockstep (features.CompareStates).",
-  "Machine shared and very heavily loaded during the run (see load), heavier than the before-fix run: timings of every state came out 2x to 4x slower than that run and must be re-run on a quiet machine before being quoted.",
-  "This run is after the sketch first/last-seen fix (internal/features/BUGLOG.md). The run before the fix is state_before_fix.json."
+  "Machine shared and heavily loaded during the run (see load); timings must be re-run on a quiet machine before being quoted."
  ],
  "load": {
-  "before": "16:56  up 1 day,  2:23, 9 users, load averages: 57.42 40.35 33.85",
-  "after": "17:02  up 1 day,  2:29, 9 users, load averages: 44.32 46.21 39.52"
+  "before": "16:47  up 1 day,  2:13, 9 users, load averages: 12.45 18.49 27.36",
+  "after": "16:48  up 1 day,  2:15, 9 users, load averages: 39.64 24.46 28.66"
  }
 }
