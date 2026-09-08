@@ -1,0 +1,20 @@
+{
+ "note": "The test month has been evaluated. Every look is listed.",
+ "looks": [
+  {
+   "at": "2026-09-23T23:52:38+00:00",
+   "git_commit": "28802bbfeb3348d3aecf2d08cf0f73a98ada7705",
+   "data_sha256": "91fac348dc4abb1cc2281f42a90d72138473c0ea55e7f05d2ed5bb2b1982128a",
+   "argv": [
+    "--export",
+    "data/export_real",
+    "--model-dir",
+    "models/ieee",
+    "--results",
+    "results/ieee",
+    "--rules-predictions",
+    "data/rules_predictions_real.csv"
+   ]
+  }
+ ]
+}
