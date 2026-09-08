@@ -1,0 +1,80 @@
+{
+ "split": "valid",
+ "rows": 83571,
+ "fraud": 2850,
+ "flagged": 2263,
+ "flagged_fraud": 885,
+ "precision": 0.3910737958462218,
+ "recall": 0.3105263157894737,
+ "fpr": 0.017071146294025098,
+ "fraud_dollar_recall": 0.35729939778760417,
+ "legit_dollar_share": 0.024067106459385205,
+ "allowed_by_rule": 0,
+ "rules": [
+  {
+   "rule": "block if :risk_score: \u003e= 50",
+   "action": "block",
+   "matched": 370,
+   "fraud": 264,
+   "precision": 0.7135135135135136,
+   "fraud_recall": 0.09263157894736843,
+   "legit_fpr": 0.0013131650995403922,
+   "decided": 370,
+   "decided_fraud": 264,
+   "fraud_dollars": 69188.66099999998,
+   "decided_dollar": 69188.66099999998
+  },
+  {
+   "rule": "review if :risk_score: \u003e= 25",
+   "action": "review",
+   "matched": 2153,
+   "fraud": 842,
+   "precision": 0.3910822108685555,
+   "fraud_recall": 0.29543859649122806,
+   "legit_fpr": 0.016241126844315605,
+   "decided": 1783,
+   "decided_fraud": 578,
+   "fraud_dollars": 161447.95000000007,
+   "decided_dollar": 92259.28900000012
+  },
+  {
+   "rule": "review if :product_code: = \"C\" and :amount: \u003e 50 and :risk_score: \u003e= 15",
+   "action": "review",
+   "matched": 531,
+   "fraud": 285,
+   "precision": 0.536723163841808,
+   "fraud_recall": 0.1,
+   "legit_fpr": 0.003047534098933363,
+   "decided": 110,
+   "decided_fraud": 43,
+   "fraud_dollars": 26241.404999999977,
+   "decided_dollar": 3820.0299999999993
+  },
+  {
+   "rule": "shadow block if :product_code: = \"C\" and :amount: \u003e 50 and :risk_score: \u003e= 25",
+   "action": "shadow block",
+   "matched": 421,
+   "fraud": 242,
+   "precision": 0.5748218527315915,
+   "fraud_recall": 0.08491228070175438,
+   "legit_fpr": 0.00221751464922387,
+   "decided": 0,
+   "decided_fraud": 0,
+   "fraud_dollars": 22421.374999999996,
+   "decided_dollar": 0
+  },
+  {
+   "rule": "shadow review if :card_network: = \"discover\" and :risk_score: \u003e= 15",
+   "action": "shadow review",
+   "matched": 152,
+   "fraud": 68,
+   "precision": 0.4473684210526316,
+   "fraud_recall": 0.023859649122807018,
+   "legit_fpr": 0.0010406213996357824,
+   "decided": 0,
+   "decided_fraud": 0,
+   "fraud_dollars": 35954.55,
+   "decided_dollar": 0
+  }
+ ]
+}
