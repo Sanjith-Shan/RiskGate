@@ -1,0 +1,11 @@
+{
+  "rows_compared": 590539,
+  "feature_rows_differ": 1,
+  "encoded_rows_differ": 1,
+  "raw_score_differ": 0,
+  "missing_from_log": 1,
+  "field_mismatch_rows": {
+    "amount": 1
+  },
+  "max_abs_feature_diff": 1.4210854715202004e-14
+}
