@@ -1,0 +1,8 @@
+{
+  "model": "models/ieee/model.txt",
+  "trees": 954,
+  "rows_checked": 92427,
+  "bit_identical": 92427,
+  "max_abs_diff": 0,
+  "scored_rows_missing_from_export": 0
+}
