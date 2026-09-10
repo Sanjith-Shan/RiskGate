@@ -216,8 +216,9 @@ func BenchmarkAssessHTTP(b *testing.B) {
 }
 
 // BenchmarkModel splits the model's share of the pipeline: Score (encode,
-// sum the trees, calibrate) and Contributions (Saabas, for the reasons), on
-// feature rows the engine computed for the bench stream.
+// sum the trees, calibrate), Contributions (Saabas, for the reasons), and
+// ScoreContributions, the one walk that gives both and that the pipeline
+// runs, on feature rows the engine computed for the bench stream.
 func BenchmarkModel(b *testing.B) {
 	s := benchService(b)
 	if s.scorer == nil {
@@ -245,6 +246,12 @@ func BenchmarkModel(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			s.scorer.Contributions(rows[i%len(rows)], x, contrib)
+		}
+	})
+	b.Run("ScoreContributions", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			s.scorer.ScoreContributions(rows[i%len(rows)], x, contrib)
 		}
 	})
 }

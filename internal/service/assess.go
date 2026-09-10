@@ -35,7 +35,9 @@ const (
 	MaxAssessBody = 64 << 10
 
 	headerIdempotencyKey = "Idempotency-Key"
-	headerDeadline       = "RiskGate-Deadline-Ms"
+	// RiskGate-Deadline-Ms, spelled in Go's canonical form: Header.Get
+	// allocates to canonicalize any other spelling. Names match either way.
+	headerDeadline = "Riskgate-Deadline-Ms"
 
 	// assessmentIDLen is len("asmt_") + 8 hex boot id + 16 hex sequence.
 	assessmentIDLen = 5 + 8 + 16
@@ -59,6 +61,7 @@ type assessBuf struct {
 	x       []float64 // model inputs
 	contrib []float64 // Saabas contributions
 	out     []byte
+	explain []model.Reason
 	reasons []string
 	shadow  []*rules.CompiledRule
 }
@@ -71,6 +74,7 @@ func newAssessBuf(cat *schema.Catalog, modelInputs int) *assessBuf {
 		x:       make([]float64, modelInputs),
 		contrib: make([]float64, modelInputs),
 		out:     make([]byte, 0, 1024),
+		explain: make([]model.Reason, 0, model.MaxReasons),
 		reasons: make([]string, 0, model.MaxReasons),
 		shadow:  make([]*rules.CompiledRule, 0, 8),
 	}
@@ -164,7 +168,8 @@ func (s *Service) assessBody(w http.ResponseWriter, r *http.Request, b *assessBu
 		b.reasons = append(b.reasons, a.rv.reason[a.d.Rule.Index])
 	}
 	if a.scored {
-		for _, reason := range s.scorer.ExplainContributions(b.row, b.x, b.contrib, model.MaxReasons-len(b.reasons)) {
+		b.explain = s.scorer.AppendReasons(b.explain[:0], b.row, b.x, b.contrib, model.MaxReasons-len(b.reasons))
+		for _, reason := range b.explain {
 			b.reasons = append(b.reasons, reason.Text)
 		}
 	}
@@ -224,8 +229,9 @@ func (s *Service) assess(t *data.Txn, b *assessBuf) assessment {
 	s.engine.ScoreAndUpdate(t, b.row)
 	var a assessment
 	if s.scorer != nil {
-		a.riskScore, a.prob, a.raw = s.scorer.Score(b.row)
-		a.bias = s.scorer.Contributions(b.row, b.x, b.contrib)
+		// One walk of the trees gives the score and the contributions the
+		// reasons and the decision log need; raw has Score's exact bits.
+		a.riskScore, a.prob, a.raw, a.bias = s.scorer.ScoreContributions(b.row, b.x, b.contrib)
 		a.scored = true
 		b.row.Num[s.riskSlot] = float64(a.riskScore)
 	} else {

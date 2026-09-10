@@ -195,7 +195,7 @@ Each decision carries up to three reasons, such as "9 payments on this card in t
 
 This is not SHAP, and the difference matters. TreeSHAP (Lundberg, Erion and Lee) averages a feature's marginal contribution over every order in which features could be revealed. That makes it consistent, meaning a model that relies more on a feature never gives it less credit, and fair to interacting features. Saabas credits only the one order the tree happens to test features in, so it is path-dependent and biased toward features split near the root. Lundberg et al. use Saabas as their example of an inconsistent method.
 
-RiskGate uses Saabas anyway because it costs about one prediction, needs no allocation, and answers the only question a reason string asks, which features pushed this payment's score up. It is not used for anything that needs consistency, such as global feature importance. LightGBM's `pred_contrib` output is TreeSHAP and will not match these numbers, and nothing in RiskGate calls them SHAP values.
+RiskGate uses Saabas anyway because it comes from the same walk of each tree that produces the score (`Model.PredictContributions`, whose raw score keeps `PredictRaw`'s exact bits, checked by `TestPredictContributionsExact`), so explaining a payment costs little more than scoring it, needs no allocation, and answers the only question a reason string asks, which features pushed this payment's score up. It is not used for anything that needs consistency, such as global feature importance. LightGBM's `pred_contrib` output is TreeSHAP and will not match these numbers, and nothing in RiskGate calls them SHAP values.
 
 ## The rule language
 
@@ -502,7 +502,7 @@ The first run found a bug in the sketch. First and last seen were min/max sketch
 
 Highest rate with p99 inside the deadline: not established. On this loaded machine the best single run reached 8,000 req/s (sharded, N = 1), but the same configuration's second run failed at 2,000. Full per-rate tables are in `results/exp5/exp5.md`.
 
-Single-request cost in process, median of 5 runs, taken while the load average was 78 to 100 (so these are upper bounds). The full pipeline (features, model, Saabas contributions and rules) costs 189 µs. Within it, the model score takes 78 µs and the Saabas contributions for reasons take 88 µs. The handler, which adds JSON and the decision log, costs 286 µs, and a request over loopback HTTP costs 473 µs. The 954-tree model is nearly all of the pipeline's cost, and computing the contributions on every request doubles it.
+Single-request cost in process, median of 5 runs, taken while the load average was 78 to 100 (so these are upper bounds). The full pipeline (features, model, Saabas contributions and rules) costs 189 µs. Within it, the model score takes 78 µs and the Saabas contributions for reasons take 88 µs. The handler, which adds JSON and the decision log, costs 286 µs, and a request over loopback HTTP costs 473 µs. The 954-tree model is nearly all of the pipeline's cost. In this run the contributions took a second walk of the trees, which nearly doubled it. The pipeline now gets the score and the contributions from one walk (`Scorer.ScoreContributions`), which costs about what the contributions alone did.
 
 ### 6. Backtest speed
 

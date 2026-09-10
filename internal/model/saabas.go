@@ -5,6 +5,7 @@ import "fmt"
 // Contributions computes Saabas feature contributions for x and writes them
 // to out, which must have NumFeatures entries; it overwrites out and returns
 // the bias. bias + sum(out) equals PredictRaw(x) up to float64 rounding.
+// It is PredictContributions without the raw score.
 //
 // The Saabas method (from Ando Saabas's treeinterpreter) follows the path x
 // takes through each tree. It starts at the root's value, and every time the
@@ -29,30 +30,42 @@ import "fmt"
 //
 // Contributions does not allocate.
 func (m *Model) Contributions(x, out []float64) (bias float64) {
+	_, bias = m.PredictContributions(x, out)
+	return bias
+}
+
+// PredictContributions is PredictRaw and Contributions in one walk of each
+// tree, for a caller that needs both, such as the service, which logs the
+// contributions of every payment it scores. raw has exactly PredictRaw's
+// bits: leaf outputs are added to a float64 that starts at zero, in tree
+// order, and nothing else is added to it. out and bias are exactly what
+// Contributions gives. It does not allocate.
+func (m *Model) PredictContributions(x, out []float64) (raw, bias float64) {
 	if len(x) != len(m.features) || len(out) != len(m.features) {
-		panic(fmt.Sprintf("model: Contributions needs %d inputs and outputs, got %d and %d", len(m.features), len(x), len(out)))
+		panic(fmt.Sprintf("model: PredictContributions needs %d inputs and outputs, got %d and %d", len(m.features), len(x), len(out)))
 	}
 	clear(out)
 	for i := range m.trees {
 		t := &m.trees[i]
 		if len(t.nodes) == 0 {
+			raw += t.leaves[0]
 			bias += t.leaves[0]
 			continue
 		}
 		bias += t.internal[0]
 		n := int32(0)
-		for n >= 0 {
+		for {
 			nd := &t.nodes[n]
 			next := t.next(nd, x[nd.feature])
-			var v float64
-			if next >= 0 {
-				v = t.internal[next]
-			} else {
-				v = t.leaves[^next]
+			if next < 0 {
+				leaf := t.leaves[^next]
+				out[nd.feature] += leaf - t.internal[n]
+				raw += leaf
+				break
 			}
-			out[nd.feature] += v - t.internal[n]
+			out[nd.feature] += t.internal[next] - t.internal[n]
 			n = next
 		}
 	}
-	return bias
+	return raw, bias
 }
