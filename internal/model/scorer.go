@@ -1,7 +1,6 @@
 package model
 
 import (
-	"cmp"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -124,6 +123,17 @@ func (s *Scorer) Contributions(row schema.Row, x, out []float64) (bias float64) 
 	return s.model.Contributions(x, out)
 }
 
+// ScoreContributions is Score and Contributions from one walk of each tree
+// (Model.PredictContributions): it writes row's model inputs to x and their
+// Saabas contributions to out, and returns what Score returns plus the bias.
+// raw has exactly the bits Score gives. It does not allocate.
+func (s *Scorer) ScoreContributions(row schema.Row, x, out []float64) (riskScore int, prob, raw, bias float64) {
+	s.enc.Encode(row, x)
+	raw, bias = s.model.PredictContributions(x, out)
+	prob = s.cal.Apply(raw)
+	return RiskScore(prob), prob, raw, bias
+}
+
 // MaxReasons is how many reasons Explain returns at most.
 const MaxReasons = 3
 
@@ -146,26 +156,18 @@ func (s *Scorer) NumFeatures() int { return s.model.NumFeatures() }
 func (s *Scorer) FeatureNames() []string { return s.model.FeatureNames() }
 
 // ExplainContributions is Explain for a caller that already has row's model
-// inputs x and Saabas contributions (from Contributions), such as the
+// inputs x and Saabas contributions (from ScoreContributions), such as the
 // service, which logs the contributions and so computes them anyway. It
 // returns at most limit reasons.
 func (s *Scorer) ExplainContributions(row schema.Row, x, contrib []float64, limit int) []Reason {
-	n := s.model.NumFeatures()
-	idx := make([]int, 0, n)
-	for i, c := range contrib {
-		if c > 0 {
-			idx = append(idx, i)
-		}
-	}
-	slices.SortFunc(idx, func(a, b int) int {
-		// Largest first; ties by input order so output is deterministic.
-		return cmp.Or(cmp.Compare(contrib[b], contrib[a]), cmp.Compare(a, b))
-	})
-	if len(idx) > limit {
-		idx = idx[:limit]
-	}
-	out := make([]Reason, len(idx))
-	for k, i := range idx {
+	return s.AppendReasons(nil, row, x, contrib, limit)
+}
+
+// AppendReasons is ExplainContributions appending to dst, for a caller that
+// reuses a buffer.
+func (s *Scorer) AppendReasons(dst []Reason, row schema.Row, x, contrib []float64, limit int) []Reason {
+	var buf [MaxReasons]int
+	for _, i := range topPositive(contrib, limit, buf[:0]) {
 		f := s.fields[i]
 		var str string
 		if f.Kind == schema.String {
@@ -175,11 +177,41 @@ func (s *Scorer) ExplainContributions(row schema.Row, x, contrib []float64, limi
 		if f.Kind == schema.Number {
 			v = row.Num[f.Slot]
 		}
-		out[k] = Reason{
+		dst = append(dst, Reason{
 			Feature:      f.Name,
 			Contribution: contrib[i],
 			Text:         describe(f, v, str, !math.IsNaN(x[i]), s.stats[i]),
-		}
+		})
 	}
-	return out
+	return dst
+}
+
+// topPositive appends to top the indexes of the (at most) limit largest
+// positive values in contrib, largest first, ties in index order. It keeps
+// top sorted as it scans, which for a handful of reasons out of a few dozen
+// inputs is cheaper than sorting them all.
+func topPositive(contrib []float64, limit int, top []int) []int {
+	if limit <= 0 {
+		return top
+	}
+	for i, c := range contrib {
+		if !(c > 0) {
+			continue
+		}
+		// Insert after every kept value >= c: that is before the first
+		// smaller one, so equal values stay in index order.
+		k := len(top)
+		for k > 0 && contrib[top[k-1]] < c {
+			k--
+		}
+		if k == limit {
+			continue
+		}
+		if len(top) < limit {
+			top = append(top, 0)
+		}
+		copy(top[k+1:], top[k:])
+		top[k] = i
+	}
+	return top
 }
