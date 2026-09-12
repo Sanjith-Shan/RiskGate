@@ -45,9 +45,9 @@ RiskGate runs on the IEEE-CIS Fraud Detection dataset, real e-commerce transacti
 The IEEE-CIS data is covered by the competition's rules on Kaggle. Section 7 of the general competition rules, "Competition Data", allows use "for non-commercial purposes only", including academic research and education, and asks participants not to redistribute the data to anyone who has not accepted the rules. This project is non-commercial and educational, so using the data is fine. Redistributing it is not, and that shapes what this repository contains.
 
 - **Raw data is never committed.** `scripts/fetch_data.sh` downloads it with your own Kaggle credentials after you accept the rules yourself. `data/` is in `.gitignore`.
-- **Row-level derived data is never committed or published either.** That covers the binary cache (`data/cache/*.rgc`), the feature export (`features.csv`), the Clearinghouse replay file (`test_replay.jsonl`), decision logs, and the sample payments a backtest report shows. A feature table is the dataset with extra columns, and a replay file is the dataset in JSON, so the same rule applies to them.
+- **Row-level derived data is never committed or published either.** That covers the binary cache (`data/cache/*.rgc`), the feature export (`export.csv`) and backtest table (`features.table`, `*.rgt`), the Clearinghouse replay file (`test_replay.jsonl`), decision logs, and the sample payments a backtest report shows. A feature table is the dataset with extra columns, and a replay file is the dataset in JSON, so the same rule applies to them.
 - **Only aggregate results are published.** AUCs, counts, dollar totals, latency percentiles, and plots. A number in this document or the README never identifies a transaction.
-- **Tests run on synthetic data.** `cmd/synth` writes an IEEE-CIS-shaped dataset from a seeded generator, and every tool that reads it prints `SYNTHETIC` (`data.SyntheticMarker`). The model parity fixtures under `internal/model/testdata` are small models trained on generated inputs.
+- **Tests run on synthetic data.** `cmd/synth` writes an IEEE-CIS-shaped dataset from a seeded generator, and `cmd/synth`, `cmd/export`, `riskgate table` and the service's page label everything built from it `SYNTHETIC` (`data.SyntheticMarker`). The model parity fixtures under `internal/model/testdata` are small models trained on generated inputs.
 - **The page and the API show sample payments only locally.** A backtest report includes up to ten matching payments so an analyst can see what a rule catches. That is fine on your machine against data you downloaded. It is not fine in a published screenshot, so the demo recording uses synthetic data.
 
 ## Architecture
@@ -58,9 +58,9 @@ The IEEE-CIS data is covered by the competition's rules on Kaggle. Section 7 of 
                      |  (deadline set by Clearinghouse)              |
                      v                                               v
   +-------------------------------------------+      +---------------------------+
-  |  RiskGate service (Go)          [planned] |      |  Backtest page and API    |
-  |                                           |      |  [backtester built,       |
-  |  features.Engine ---- velocity state      |      |   page planned]           |
+  |  RiskGate service (Go)                    |      |  Backtest page and API    |
+  |                                           |      |  (in the service, and     |
+  |  features.Engine ---- velocity state      |      |   cmd/backtest)           |
   |        |              exact | bucketed |  |      |                           |
   |        |              sketch, sharded     |      |  columnar table (.rgt)    |
   |        v                                  |      |  vectorized rule eval     |
@@ -85,25 +85,25 @@ What exists today, package by package.
 | `internal/schema` | The field catalog, the one contract between features, rules, model and backtester | built |
 | `internal/data` | IEEE-CIS loader, identity join, `(DT, ID)` sort, month split, binary cache, replay format | built |
 | `internal/data/synth`, `cmd/synth` | Seeded synthetic dataset in the IEEE-CIS file format | built |
-| `internal/features` | The feature engine, three velocity states, three concurrency wrappers, snapshots, replay | being finished |
+| `internal/features` | The feature engine, three velocity states, three concurrency wrappers, snapshots, replay | built |
 | `cmd/export` | Offline feature export for training, plus the test-month replay file | built |
 | `internal/model` | LightGBM text-model evaluator, Saabas contributions, calibration, reasons | built |
 | `python/` | Offline training, baselines, evaluation, parity scores, fixtures | built |
 | `cmd/parity` | Go raw scores against LightGBM's on every exported row | built |
 | `internal/rules`, `cmd/rulecheck` | Lexer, Pratt parser, checker, linter, printer, closure compiler, generator | built |
 | `internal/backtest` | Columnar table, vectorized evaluator, differential test, reports, sweep, label delay | built |
-| `cmd/backtest` | Command line for backtests, the sweep, and experiments 3, 6 and 7. Building its table from the real export is not wired up yet | built |
+| `cmd/backtest` | Command line for backtests, the sweep, and experiments 3, 6 and 7, over `cmd/export`'s `features.table` or `riskgate table`'s scored table | built |
 | `internal/webhook` | Clearinghouse signature verifier, dedupe, event envelope, HTTP handler | built |
 | `internal/loadgen`, `cmd/loadgen` | Open-loop load generator with coordinated-omission correction | built |
-| `internal/service`, `cmd/riskgate` | `/v1/assess`, idempotency, rule swap, decision log, snapshots, metrics, the page | in progress (idempotency and metrics started, no binary yet) |
+| `internal/service`, `cmd/riskgate` | `/v1/assess`, idempotency, rule swap, shadow rules, decision log and `riskgate audit`, snapshots, metrics, the page, and `riskgate table` | built |
 
 ## One feature implementation, and point-in-time correctness
 
 Train/serve skew is the most common way a fraud model fails quietly. The model is trained on features computed one way, usually a batch job in Python or SQL, and served on features computed another way, usually a streaming service written later by someone else. The two disagree at a window edge, on a null, or on whether "the last hour" includes the current payment. Nothing crashes. The model just gets worse, and nobody can say by how much.
 
-RiskGate rules this out by construction. There is one function that turns a payment and the current state into a feature vector, `Engine.ScoreAndUpdate` (`internal/features/engine.go:171`). The offline export calls it through `features.Replay`. The backtester's table is meant to be built from the same replay (`features.ReplayColumns` produces exactly the column layout it scans), and today `cmd/backtest` runs only on generated tables until that step is wired up. The online service will call it once per request. Python never computes a feature. It reads the Go export (`python/riskgate.py`), and it even parses floats with `float_precision="round_trip"` because pandas' default parser can be one ulp off, which would break parity before the model is involved.
+RiskGate rules this out by construction. There is one function that turns a payment and the current state into a feature vector, `Engine.ScoreAndUpdate` (`internal/features/engine.go:171`). The offline export calls it through `features.Replay`. The backtester's table is built from the same replay (`features.ReplayColumns` produces exactly the column layout it scans). The online service calls it once per request. Python never computes a feature. It reads the Go export (`python/riskgate.py`), and it even parses floats with `float_precision="round_trip"` because pandas' default parser can be one ulp off, which would break parity before the model is involved.
 
-Construction is a claim. Experiment 2 is the proof. It replays the test month through the HTTP service, captures every feature vector, and compares it with the offline export row by row.
+Construction is a claim. Experiment 2 is the proof. It replays all 590,540 payments through the HTTP service, captures every feature vector, and compares it with the offline export row by row.
 
 ### Point in time
 
@@ -145,7 +145,7 @@ For concurrency, `NewSharded` hashes keys across N states, each behind its own r
 
 Snapshots are a small binary format, deterministic in order, so equal states produce byte-identical snapshots. That makes "the restored state equals the state before shutdown" a byte comparison (`TestSnapshotRestore`).
 
-Which state ships is decided by experiments 4 and 5. `TBD (experiments 4 and 5)`.
+The service runs the exact state by default (`riskgate serve -state exact`). Experiment 4 found it the smallest of the three at this data's scale, with no error, and the bucketed ring costs nothing measurable on the model's metrics if a bound per key is needed. The shard count is still open, because experiment 5's only run was on a loaded machine.
 
 ## The model
 
@@ -182,7 +182,7 @@ The isotonic fit is on the raw score rather than on `sigmoid(raw)`. Isotonic reg
 
 `internal/model` reads LightGBM's text model file and predicts raw scores in Go with no cgo, no ONNX runtime, and no Python. It handles numerical splits, missing values from the `decision_type` bits (default left or right, and whether NaN or zero counts as missing), and categorical splits from the `cat_threshold` bitsets. Trees are summed in file order into a float64 starting at zero, which is what LightGBM's own `PredictRaw` does. Summation order is the usual reason two tree evaluators differ in the last bit, so matching it is what makes bit-identical parity possible.
 
-**Parity.** The target is bit-identical raw scores, not "close". The unit tests compare against LightGBM's `predict(raw_score=True)` on fixtures built to break an evaluator that is merely close (`python/gen_fixtures.py`). Rows are fed at every split threshold, one ulp above and below it, at both signed zeros, at values inside LightGBM's zero threshold, and at NaN and infinities. Categorical fixtures probe codes past the bitset, negative codes and fractional codes. On real data, `cmd/parity` compares every row of the test month against scores written by `python/parity.py` and exits 1 on any difference. Result `TBD (experiment 2)`.
+**Parity.** The target is bit-identical raw scores, not "close". The unit tests compare against LightGBM's `predict(raw_score=True)` on fixtures built to break an evaluator that is merely close (`python/gen_fixtures.py`). Rows are fed at every split threshold, one ulp above and below it, at both signed zeros, at values inside LightGBM's zero threshold, and at NaN and infinities. Categorical fixtures probe codes past the bitset, negative codes and fractional codes. On real data, `cmd/parity` compares every row of the test month against scores written by `python/parity.py` and exits 1 on any difference. On the test month all 92,427 rows were bit-identical ([experiment 2](#2-trainserve-parity)).
 
 Two findings from building it are worth recording, because both are the kind of thing that makes an evaluator agree on 99.99% of rows.
 
@@ -346,7 +346,7 @@ The default is 60 days (`DefaultMaturity`). IEEE-CIS carries no label arrival ti
 
 ## The online service
 
-This section describes the planned `internal/service` and `cmd/riskgate`. The pieces it assembles exist and are tested. The service itself is not built yet.
+This section describes `internal/service` and `cmd/riskgate serve`.
 
 ### `POST /v1/assess`
 

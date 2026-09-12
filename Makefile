@@ -1,7 +1,8 @@
 # RiskGate developer entry points. CI runs the same commands (.github/workflows/ci.yml).
 
 GO       ?= go
-PYTHON   ?= python3
+# The project venv if it exists, so `make train` works without activating it.
+PYTHON   ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 FUZZTIME ?= 20s
 BIN      ?= bin
 
@@ -9,8 +10,9 @@ BIN      ?= bin
 SYNTH_ARGS  ?=
 EXPORT_ARGS ?=
 TRAIN_ARGS  ?=
+TABLE_ARGS  ?=
 
-.PHONY: build test race vet lint fuzz cover synth export train bench
+.PHONY: build test race vet lint fuzz cover synth export table train bench
 
 build: ## compile every package and binary into ./bin
 	$(GO) build ./...
@@ -31,8 +33,8 @@ lint: vet ## go vet + staticcheck (a tool, not a go.mod dependency)
 fuzz: ## every Fuzz target for FUZZTIME each
 	scripts/fuzz_all.sh $(FUZZTIME)
 
-cover: ## race tests with a coverage report
-	$(GO) test -race -covermode=atomic -coverprofile=coverage.out ./...
+cover: ## tests with a coverage report, without -race (atomic counters under -race made this ~7 min)
+	$(GO) test -covermode=set -coverprofile=coverage.out ./...
 	$(GO) tool cover -func=coverage.out | tail -n 1
 
 synth: ## synthetic fixture data for development without the Kaggle download
@@ -40,6 +42,9 @@ synth: ## synthetic fixture data for development without the Kaggle download
 
 export: ## offline feature export (the same feature code the service runs)
 	$(GO) run ./cmd/export $(EXPORT_ARGS)
+
+table: ## backtest feature table for the service and the backtester, e.g. TABLE_ARGS="-synthetic -model models/synthetic"
+	$(GO) run ./cmd/riskgate table $(TABLE_ARGS)
 
 train: ## train the model on the Go export (offline, Python)
 	$(PYTHON) python/train.py $(TRAIN_ARGS)
