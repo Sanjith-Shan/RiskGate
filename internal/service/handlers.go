@@ -95,14 +95,20 @@ func (s *Service) handleRulesPut(w http.ResponseWriter, r *http.Request) {
 	text, lists := string(body), []byte(nil)
 	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt == "application/json" {
 		var req struct {
-			Rules string          `json:"rules"`
+			Rules *string         `json:"rules"`
 			Lists json.RawMessage `json:"lists"`
 		}
 		if err := json.Unmarshal(body, &req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid_json", err.Error())
 			return
 		}
-		text, lists = req.Rules, req.Lists
+		// Without "rules" (a typo such as "rule"), deploying would switch
+		// every rule off. An empty string still clears the rules on purpose.
+		if req.Rules == nil {
+			writeError(w, http.StatusBadRequest, "invalid_request", `the JSON body needs "rules", the rule text`)
+			return
+		}
+		text, lists = *req.Rules, req.Lists
 	}
 	if lists == nil {
 		lists = s.rules.current().ListsJSON
@@ -148,6 +154,11 @@ type testRequest struct {
 func (s *Service) handleRulesTest(w http.ResponseWriter, r *http.Request) {
 	var req testRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxTestBody)).Decode(&req); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "body_too_large", err.Error())
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid_json", err.Error())
 		return
 	}

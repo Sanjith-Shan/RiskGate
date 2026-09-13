@@ -186,7 +186,12 @@ func (s *LabelStore) Record(e *webhook.Event) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	r.Seq = s.seq + 1
+	// The sequence number is spent even if the append fails: the line may
+	// have reached the file anyway (a failed fsync), and replay skips any
+	// record whose seq is not above the last one applied, so handing the
+	// number out again would hide the next, acknowledged, label.
+	s.seq++
+	r.Seq = s.seq
 	if s.log != nil {
 		line, err := json.Marshal(&r)
 		if err != nil {
@@ -199,7 +204,6 @@ func (s *LabelStore) Record(e *webhook.Event) error {
 			return err
 		}
 	}
-	s.seq = r.Seq
 	s.apply(&r)
 	return nil
 }
