@@ -75,11 +75,17 @@ type DecisionLog struct {
 	modelInputs  []string // contribution names, in model order
 	topN         int      // contributions to log; <= 0 means all
 	catalogStamp string
+	modelSHA256  string // model.Scorer.SHA256; "" when unknown
 
-	ch     chan *logRecord
-	pool   sync.Pool
-	done   chan struct{}
-	closed atomic.Bool
+	ch   chan *logRecord
+	pool sync.Pool
+	done chan struct{}
+	// mu makes a send on ch and Close exclusive, so that a handler still
+	// running after shutdown's drain timeout drops its record rather than
+	// sending on a closed channel. Senders share it; only Close takes it
+	// exclusively.
+	mu     sync.RWMutex
+	closed bool
 	w      *bufio.Writer
 	f      *os.File
 
@@ -88,16 +94,17 @@ type DecisionLog struct {
 }
 
 // NewDecisionLog appends to path, creating it if needed. modelInputs names
-// the contribution entries (nil when there is no model).
-func NewDecisionLog(path string, cat *schema.Catalog, modelInputs []string, topN, buffer int, flushEvery time.Duration) (*DecisionLog, error) {
+// the contribution entries and modelSHA256 identifies the model (nil and ""
+// when there is no model).
+func NewDecisionLog(path string, cat *schema.Catalog, modelInputs []string, modelSHA256 string, topN, buffer int, flushEvery time.Duration) (*DecisionLog, error) {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
 		return nil, err
 	}
-	return newDecisionLog(f, cat, modelInputs, topN, buffer, flushEvery), nil
+	return newDecisionLog(f, cat, modelInputs, modelSHA256, topN, buffer, flushEvery), nil
 }
 
-func newDecisionLog(f *os.File, cat *schema.Catalog, modelInputs []string, topN, buffer int, flushEvery time.Duration) *DecisionLog {
+func newDecisionLog(f *os.File, cat *schema.Catalog, modelInputs []string, modelSHA256 string, topN, buffer int, flushEvery time.Duration) *DecisionLog {
 	if buffer <= 0 {
 		buffer = DefaultLogBuffer
 	}
@@ -105,7 +112,7 @@ func newDecisionLog(f *os.File, cat *schema.Catalog, modelInputs []string, topN,
 		flushEvery = DefaultFlushInterval
 	}
 	l := &DecisionLog{
-		cat: cat, modelInputs: modelInputs, topN: topN, catalogStamp: catalogStamp(cat),
+		cat: cat, modelInputs: modelInputs, topN: topN, catalogStamp: catalogStamp(cat), modelSHA256: modelSHA256,
 		ch: make(chan *logRecord, buffer), done: make(chan struct{}),
 		f: f, w: bufio.NewWriterSize(f, 256<<10),
 	}
@@ -126,14 +133,17 @@ func newDecisionLog(f *os.File, cat *schema.Catalog, modelInputs []string, topN,
 func (l *DecisionLog) get() *logRecord { return l.pool.Get().(*logRecord) }
 
 func (l *DecisionLog) put(r *logRecord) {
-	if l.closed.Load() {
-		l.dropped.Add(1)
-		l.recycle(r)
-		return
+	l.mu.RLock()
+	sent := false
+	if !l.closed {
+		select {
+		case l.ch <- r:
+			sent = true
+		default:
+		}
 	}
-	select {
-	case l.ch <- r:
-	default:
+	l.mu.RUnlock()
+	if !sent {
 		l.dropped.Add(1)
 		l.recycle(r)
 	}
@@ -148,22 +158,35 @@ func (l *DecisionLog) recycle(r *logRecord) {
 // Sync waits until every record handed over before the call is written to
 // the file (not fsynced). Readers of the log file call it first.
 func (l *DecisionLog) Sync() {
-	if l == nil || l.closed.Load() {
+	if l == nil {
 		return
 	}
 	b := &logRecord{barrier: make(chan struct{})}
+	l.mu.RLock()
+	if l.closed {
+		l.mu.RUnlock()
+		return
+	}
 	l.ch <- b // blocking on purpose: a reader asked to wait
+	l.mu.RUnlock()
 	<-b.barrier
 }
 
 // Close drains the channel, flushes and fsyncs. Records put after Close
-// are dropped. Close must not race with put callers still running: the
-// service calls it after the HTTP server has shut down.
+// are dropped and counted, so it is safe to call while requests that
+// outlived shutdown's drain timeout are still running.
 func (l *DecisionLog) Close() error {
-	if l == nil || l.closed.Swap(true) {
+	if l == nil {
 		return nil
 	}
+	l.mu.Lock()
+	if l.closed {
+		l.mu.Unlock()
+		return nil
+	}
+	l.closed = true
 	close(l.ch)
+	l.mu.Unlock()
 	<-l.done
 	err := l.w.Flush()
 	if fi, serr := l.f.Stat(); serr == nil && fi.Mode().IsRegular() {
@@ -275,6 +298,10 @@ func (l *DecisionLog) encode(b []byte, r *logRecord, order []int) ([]byte, []int
 	}
 	b = appendKey(b, "catalog", false)
 	b = appendString(b, l.catalogStamp)
+	if l.modelSHA256 != "" {
+		b = appendKey(b, "model_sha256", false)
+		b = appendString(b, l.modelSHA256)
+	}
 
 	// The full feature vector, in catalog order: a number, a string, or
 	// null for missing.
@@ -352,6 +379,7 @@ type LogEntry struct {
 	RawScore       *float64           `json:"raw_score"`
 	LatencyUs      float64            `json:"latency_us"`
 	Catalog        string             `json:"catalog"`
+	ModelSHA256    string             `json:"model_sha256"`
 	Features       []any              `json:"features"`
 	Bias           *float64           `json:"bias"`
 	Contributions  map[string]float64 `json:"contributions"`

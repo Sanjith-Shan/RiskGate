@@ -121,7 +121,7 @@ A feature for a payment at time *t* may use only payments strictly before it. Th
 
 Windows are defined in event time, the payment's own `created` timestamp, never the wall clock of the machine computing the feature. Replay has no wall clock at all. Online, Clearinghouse sends `created`, and the service converts it back to `TransactionDT` (`data.DTFromUnix`), so a replayed month computes the same windows at any replay speed. Kleppmann's chapter on stream processing is the reference here.
 
-The cost of event time is out-of-order arrival. Online, two requests for the same card can arrive in the opposite order from their timestamps. RiskGate's rule is that a late event is recorded at the key's latest time rather than its own (`TestLateEventIsClamped`). It is still counted, and a key's history stays in time order, so windows never have to be repaired. The trade-off is that a late event can stay in a window for up to a few seconds longer than it should. I chose that over buffering, because a buffer would add latency to every payment to fix a rare edge.
+The cost of event time is out-of-order arrival. Online, two requests for the same card can arrive in the opposite order from their timestamps. RiskGate's rule is that a late event is recorded at the key's latest time rather than its own (`TestLateEventIsClamped`). It is still counted, and a key's history stays in time order, so windows never have to be repaired. The trade-off is that a late event can stay in a window for up to a few seconds longer than it should. I chose that over buffering, because a buffer would add latency to every payment to fix a rare edge. A late payment is also scored as of that latest time, so its `seconds_since_last` is 0, never the negative value training never sees (`TestLateEventIsScoredAtKeyLatest`). Replay never produces a late event, so offline rows are unchanged.
 
 One more honest limit. Per-key atomicity is all the engine promises. Two concurrent payments that share a card but not a device can see each other through the card and not through the device. Replay is sequential and never hits this. Online it means features depend on arrival order within a few milliseconds, which is also true of any real system that does not serialize all payments.
 
@@ -358,17 +358,19 @@ This section describes `internal/service` and `cmd/riskgate serve`.
 6. `RuleSet.Evaluate` on the rule set loaded at the start of the request.
 7. Append to the decision log, and respond with `{assessment_id, decision, risk_score, matched_rule, reasons, ruleset_version}`.
 
+A `created` far in the future would become its keys' latest time and hold every later payment on them, including shared keys like an email domain, inside every window. So the service answers 400 `created_out_of_range` for a value after the year 3000, which is usually milliseconds, and 400 `created_in_future` for a value more than `-max-future-skew` (default 24h, 0 turns it off) ahead of both the latest `created` it has accepted and the wall clock. The clock gives the first payment a reference, and a replay of past data in order is always accepted.
+
 ### Hot swap
 
 `PUT /v1/rules` parses, checks, lints and compiles a new rule set. On any error it returns every diagnostic and changes nothing. On success it swaps the new `*RuleSet` into an `atomic.Pointer`. A request loads the pointer once and uses that rule set for its whole evaluation, so it never sees half of one rule set and half of another, and a swap never takes a lock on the scoring path. Every decision records the rule-set version it used.
 
 ### Decision log and audit replay
 
-Every decision is appended to a JSONL log with the full feature vector, the risk score, the rule-set version, matched shadow rules and the reasons. Because the rules are pure functions of the feature vector, any past decision can be re-evaluated from its log line against the rule set it used, and against a proposed one. That is also how shadow rules are compared with their backtests.
+Every decision is appended to a JSONL log with the full feature vector, the risk score, the rule-set version, matched shadow rules, the reasons, and the model's `model_sha256`. That is the SHA-256 of the model directory's four files, also shown in `/v1/info` and `/metrics`, and `riskgate audit` refuses to replay a log against a model with a different hash. Because the rules are pure functions of the feature vector, any past decision can be re-evaluated from its log line against the rule set it used, and against a proposed one. That is also how shadow rules are compared with their backtests.
 
 ### Snapshots
 
-Velocity state and the webhook deduper are snapshotted to disk and restored on start. The tests assert that the restored state equals the state before shutdown byte for byte, and that decisions after a restart match decisions from an uninterrupted run.
+Velocity state and the webhook deduper are snapshotted to disk and restored on start. A snapshot taken under traffic copies the idempotency store after the velocity state, inside a brief barrier that each keyed assess holds from its velocity update until its answer is stored. So a retry after a crash is never counted twice. The tests assert that the restored state equals the state before shutdown byte for byte, and that decisions after a restart match decisions from an uninterrupted run.
 
 ### Metrics
 

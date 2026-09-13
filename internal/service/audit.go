@@ -20,7 +20,8 @@ import (
 // set version that made the decision, and checks that the decision, the
 // matched rule, the shadow matches, the risk score and the raw model score
 // (to the bit) all come out the same. That is the claim "every decision can
-// be replayed and explained", checked rather than asserted.
+// be replayed and explained", checked rather than asserted. A log scored by
+// a model with another SHA-256 is refused outright.
 
 // AuditMismatch is one field of one decision that did not replay.
 type AuditMismatch struct {
@@ -101,6 +102,8 @@ func Audit(r io.Reader, cat *schema.Catalog, scorer *model.Scorer, history map[u
 		case scorer == nil:
 			mismatch("model", "scored", "no model given to the audit")
 			return nil
+		case e.ModelSHA256 != "" && scorer.SHA256() != "" && e.ModelSHA256 != scorer.SHA256():
+			return fmt.Errorf("decision log line %d was scored by model %s, but the audit's model is %s; audit with the model directory the service ran", line, e.ModelSHA256, scorer.SHA256())
 		default:
 			score, _, raw := scorer.Score(row)
 			if score != e.RiskScore {

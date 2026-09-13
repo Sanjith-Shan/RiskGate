@@ -1,6 +1,8 @@
 package model
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -20,6 +22,23 @@ const (
 	MetadataFile    = "metadata.json"    // Metadata
 )
 
+// DirSHA256 identifies a model directory by the SHA-256 of the listing
+// `shasum -a 256 model.txt encoder.json calibration.json metadata.json`
+// prints in it, so that a shell can reproduce the hash.
+func DirSHA256(dir string) (string, error) {
+	var sums []byte
+	for _, name := range []string{ModelFile, EncoderFile, CalibrationFile, MetadataFile} {
+		b, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			return "", err
+		}
+		sum := sha256.Sum256(b)
+		sums = fmt.Appendf(sums, "%x  %s\n", sum, name)
+	}
+	sum := sha256.Sum256(sums)
+	return hex.EncodeToString(sum[:]), nil
+}
+
 // Metadata is the part of metadata.json the service reads. The file holds
 // more (training parameters, data provenance) for people.
 type Metadata struct {
@@ -37,6 +56,7 @@ type Scorer struct {
 	model   *Model
 	cal     *Calibrator
 	meta    Metadata
+	sha256  string         // DirSHA256 of the directory it was loaded from
 	fields  []schema.Field // catalog field of each model input
 	stats   []*Stat        // per input, nil if unknown
 	scratch sync.Pool      // *[]float64 of length NumFeatures
@@ -65,7 +85,16 @@ func LoadScorer(dir string, c *schema.Catalog) (*Scorer, error) {
 	if err := json.Unmarshal(b, &meta); err != nil {
 		return nil, fmt.Errorf("%s: %w", MetadataFile, err)
 	}
-	return NewScorer(c, enc, m, cal, meta)
+	sum, err := DirSHA256(dir)
+	if err != nil {
+		return nil, err
+	}
+	s, err := NewScorer(c, enc, m, cal, meta)
+	if err != nil {
+		return nil, err
+	}
+	s.sha256 = sum
+	return s, nil
 }
 
 // NewScorer assembles a Scorer from parts already loaded.
@@ -99,6 +128,10 @@ func NewScorer(c *schema.Catalog, enc *schema.Encoder, m *Model, cal *Calibrator
 
 // Model returns the underlying tree model.
 func (s *Scorer) Model() *Model { return s.model }
+
+// SHA256 identifies the model: DirSHA256 of the directory LoadScorer read,
+// or "" for a Scorer assembled by NewScorer.
+func (s *Scorer) SHA256() string { return s.sha256 }
 
 // Synthetic reports whether the model was trained on synthetic data.
 func (s *Scorer) Synthetic() bool { return s.meta.Data.Synthetic }
