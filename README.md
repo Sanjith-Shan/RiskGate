@@ -26,7 +26,9 @@ RiskGate does not compare itself with Stripe Radar or with the Kaggle leaderboar
 
 ## Demo
 
-`TBD: GIF of typing a rule into the page, seeing an error with a caret, fixing it, and reading the backtest. It will be recorded on synthetic data, since the real data cannot be republished.`
+![Typing a rule, seeing the caret error, fixing it, and reading the backtest](docs/demo.gif)
+
+Recorded on the SYNTHETIC dataset (the page's badge says so), because IEEE-CIS rows may not be republished. The typo gets a caret and a suggestion. The corrected card-testing rule then gets a plain-English backtest that says it would block 12,429 legitimate payments to catch 96 frauds. That is the point of the page: a bad rule is visible as bad before it goes live.
 
 ## A rule, and what RiskGate says about it
 
