@@ -100,7 +100,7 @@ func TestWebhookEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer ls.Close()
-	if err := ls.replayLog(); err != nil {
+	if _, err := ls.replayLog(); err != nil {
 		t.Fatal(err)
 	}
 	if got := ls.Counts(); got != c {
@@ -148,13 +148,14 @@ func TestLabelLogTornLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	ls.Close()
+	const torn = `{"seq":2,"event_id":"evt_2","ty` // crash mid-append
 	f, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
-	f.WriteString(`{"seq":2,"event_id":"evt_2","ty`) // crash mid-append
+	f.WriteString(torn)
 	f.Close()
 
 	ls, _ = OpenLabelStore(path)
-	if err := ls.replayLog(); err != nil {
-		t.Fatal(err)
+	if cut, err := ls.replayLog(); err != nil || cut != len(torn) {
+		t.Fatalf("cut %d bytes (%v), want %d", cut, err, len(torn))
 	}
 	e2, _ := webhook.ParseEvent(eventBody("evt_2", webhook.TypeChargeDisputeCreated, 2, dispute("dp2", "txn_2", "fraudulent", "")))
 	if err := ls.Record(e2); err != nil {
@@ -163,7 +164,7 @@ func TestLabelLogTornLine(t *testing.T) {
 	ls.Close()
 	ls, _ = OpenLabelStore(path)
 	defer ls.Close()
-	if err := ls.replayLog(); err != nil {
+	if _, err := ls.replayLog(); err != nil {
 		t.Fatalf("log unreadable after a torn write: %v", err)
 	}
 	if c := ls.Counts(); c.Fraud != 2 {
@@ -209,10 +210,38 @@ func TestLabelLogFailedSyncDoesNotReuseSeq(t *testing.T) {
 
 	ls, _ = OpenLabelStore(path)
 	defer ls.Close()
-	if err := ls.replayLog(); err != nil {
+	if _, err := ls.replayLog(); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := ls.Label("txn_2"); !ok {
 		t.Fatal("acknowledged label for txn_2 lost on restart")
+	}
+}
+
+// A webhook still being handled when shutdown gives up waiting reaches a
+// closed label store. It must not be acknowledged: a 200 with the label
+// only in memory would lose it for good, since Clearinghouse stops
+// retrying. 503 makes it redeliver to the restarted service.
+func TestWebhookAfterCloseIsRetried(t *testing.T) {
+	env := newTestEnv(t)
+	s := env.start(t)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	body := eventBody("evt_late", webhook.TypeChargeDisputeCreated, time.Now().Unix(), dispute("dp_late", "txn_3000001", "fraudulent", "needs_response"))
+	if code, st := post(t, srv.URL, body, testSecret); code != http.StatusServiceUnavailable {
+		t.Fatalf("after close: %d %s, want 503", code, st)
+	}
+	// Nor is it remembered as processed: the redelivery must be applied.
+	r := env.start(t)
+	defer r.Close()
+	srv.Config.Handler = r.Handler()
+	if code, st := post(t, srv.URL, body, testSecret); code != 200 || st != "processed" {
+		t.Fatalf("redelivery: %d %s", code, st)
+	}
+	if _, ok := r.labels.Label("txn_3000001"); !ok {
+		t.Fatal("redelivered label not recorded")
 	}
 }

@@ -11,6 +11,7 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -43,6 +44,11 @@ type Config struct {
 	// Scorer fills :risk_score:. Nil runs without a model: risk_score is
 	// missing to the rules and 0 in responses.
 	Scorer *model.Scorer
+
+	// MaxFutureSkew bounds how far a payment's created may be ahead of the
+	// later of the latest accepted created and the wall clock
+	// (DefaultMaxFutureSkew); negative turns the bound off.
+	MaxFutureSkew time.Duration
 
 	// Rules and ListsJSON are the rule set to start with when there is no
 	// snapshot to restore.
@@ -113,7 +119,15 @@ type Service struct {
 	bootID [8]byte   // hex; makes assessment ids unique across restarts
 	seq    atomic.Uint64
 
-	snapMu       sync.Mutex // one snapshot at a time
+	maxSkew       int64        // seconds; negative: no bound (see checkCreated)
+	latestCreated atomic.Int64 // latest accepted created, Unix seconds
+
+	snapMu sync.Mutex // one snapshot at a time
+	// cut keeps a snapshot from saving a payment in the velocity state
+	// without its idempotent answer. An assess with an Idempotency-Key holds
+	// it shared from its velocity update until its answer is stored;
+	// Snapshot holds it exclusively while it copies the idempotency store.
+	cut          sync.RWMutex
 	lastSnapshot atomic.Int64
 	closed       atomic.Bool
 
@@ -163,6 +177,10 @@ func New(cfg Config) (*Service, error) {
 		dedupe:   webhook.NewDeduper(webhook.DeduperConfig{TTL: cfg.DedupeTTL, Now: cfg.Now}),
 		verifier: verifier,
 		bt:       newBacktests(cfg.Table),
+		maxSkew:  -1,
+	}
+	if cfg.MaxFutureSkew >= 0 {
+		s.maxSkew = int64(cmp.Or(cfg.MaxFutureSkew, DefaultMaxFutureSkew) / time.Second)
 	}
 	if _, err := rand.Read(s.bootID[:4]); err != nil {
 		return nil, err
@@ -190,15 +208,20 @@ func New(cfg Config) (*Service, error) {
 			return fail(fmt.Errorf("service: initial rules: %w", err))
 		}
 	}
-	if err := labels.replayLog(); err != nil {
+	torn, err := labels.replayLog()
+	if err != nil {
 		return fail(fmt.Errorf("service: label log: %w", err))
+	}
+	if torn > 0 {
+		s.log.Warn("label log: cut off a torn final line (an unacknowledged label, which Clearinghouse redelivers)", "path", cfg.LabelLog, "bytes", torn)
 	}
 	if cfg.DecisionLog != "" {
 		var names []string
+		var sum string
 		if s.scorer != nil {
-			names = s.scorer.FeatureNames()
+			names, sum = s.scorer.FeatureNames(), s.scorer.SHA256()
 		}
-		if s.dlog, err = NewDecisionLog(cfg.DecisionLog, s.cat, names, cfg.LogContributions, cfg.LogBuffer, 0); err != nil {
+		if s.dlog, err = NewDecisionLog(cfg.DecisionLog, s.cat, names, sum, cfg.LogContributions, cfg.LogBuffer, 0); err != nil {
 			return fail(err)
 		}
 	}
@@ -214,7 +237,9 @@ func (s *Service) RulesetVersion() uint64 { return s.rules.current().Version }
 
 // Close takes a final snapshot and closes the logs. Call it after the HTTP
 // server has stopped accepting requests, so the snapshot is a single
-// point in time: the state every answered request left behind.
+// point in time: the state every answered request left behind. Requests
+// that outlive the shutdown's drain timeout are still safe: their decision
+// log records are dropped and counted, and their labels refused with 503.
 func (s *Service) Close() error {
 	if s.closed.Swap(true) {
 		return nil

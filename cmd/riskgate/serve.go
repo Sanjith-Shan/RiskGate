@@ -37,6 +37,7 @@ type serveConfig struct {
 	logContributions int
 	webhookSecrets   string
 	webhookTolerance time.Duration
+	maxFutureSkew    time.Duration
 	provenance       string
 	logLevel         string
 }
@@ -59,6 +60,7 @@ func serveFlags(fs *flag.FlagSet) *serveConfig {
 	fs.IntVar(&c.logContributions, "log-contributions", 10, "Saabas contributions logged per decision, largest first (0: all)")
 	fs.StringVar(&c.webhookSecrets, "webhook-secrets", "", "comma-separated Clearinghouse signing secrets; prefer RISKGATE_WEBHOOK_SECRETS")
 	fs.DurationVar(&c.webhookTolerance, "webhook-tolerance", 5*time.Minute, "accepted webhook signature timestamp skew")
+	fs.DurationVar(&c.maxFutureSkew, "max-future-skew", service.DefaultMaxFutureSkew, "refuse a payment whose created is further ahead of the latest accepted one and the clock (0: no bound)")
 	fs.StringVar(&c.provenance, "provenance", "", "data label shown on the page (default from the model: \"SYNTHETIC DATA\" or \"IEEE-CIS (local only)\")")
 	fs.StringVar(&c.logLevel, "log-level", "info", "debug, info, warn or error")
 	return c
@@ -192,8 +194,12 @@ func buildConfig(c *serveConfig, logger *slog.Logger) (service.Config, error) {
 		RulesHistoryDir:  under(c.snapshotDir, c.rulesHistory, "rules-history"),
 		LogContributions: c.logContributions,
 		WebhookTolerance: c.webhookTolerance,
+		MaxFutureSkew:    c.maxFutureSkew,
 		Provenance:       c.provenance,
 		Logger:           logger,
+	}
+	if c.maxFutureSkew == 0 {
+		cfg.MaxFutureSkew = -1 // the flag's 0 is "off"; the Config's is the default
 	}
 	if c.snapshotDir != "" {
 		if err := os.MkdirAll(c.snapshotDir, 0o755); err != nil {

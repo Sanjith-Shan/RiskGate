@@ -96,6 +96,7 @@ type LabelCounts struct {
 type LabelStore struct {
 	mu       sync.Mutex
 	log      *os.File // nil: in memory only
+	closed   bool
 	seq      uint64
 	payments map[string]*PaymentLabel
 	version  uint64 // bumped on every change, to invalidate backtest overlays
@@ -116,16 +117,17 @@ func OpenLabelStore(path string) (*LabelStore, error) {
 	return s, nil
 }
 
-// replayLog applies every log record after the current sequence number.
-// Called at startup, after any snapshot restore.
-func (s *LabelStore) replayLog() error {
+// replayLog applies every log record after the current sequence number and
+// returns how many bytes of a torn final line it cut off. Called at
+// startup, after any snapshot restore.
+func (s *LabelStore) replayLog() (torn int, err error) {
 	if s.log == nil {
-		return nil
+		return 0, nil
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, err := s.log.Seek(0, io.SeekStart); err != nil {
-		return err
+		return 0, err
 	}
 	br := bufio.NewReader(s.log)
 	var offset int64
@@ -137,17 +139,17 @@ func (s *LabelStore) replayLog() error {
 				// was never acknowledged, so Clearinghouse will redeliver
 				// it; cut the fragment off so the next append starts on a
 				// fresh line.
-				return s.log.Truncate(offset)
+				return len(b), s.log.Truncate(offset)
 			}
-			return nil
+			return 0, nil
 		}
 		if err != nil {
-			return err
+			return 0, err
 		}
 		offset += int64(len(b))
 		var r LabelRecord
 		if err := json.Unmarshal(b, &r); err != nil {
-			return fmt.Errorf("label log line %d: %w", line, err)
+			return 0, fmt.Errorf("label log line %d: %w", line, err)
 		}
 		if r.Seq <= s.seq {
 			continue // already in the snapshot
@@ -186,6 +188,9 @@ func (s *LabelStore) Record(e *webhook.Event) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.closed {
+		return errLabelsClosed
+	}
 	// The sequence number is spent even if the append fails: the line may
 	// have reached the file anyway (a failed fsync), and replay skips any
 	// record whose seq is not above the last one applied, so handing the
@@ -337,10 +342,16 @@ func (s *LabelStore) restore(snap labelSnapshot) {
 	s.version++
 }
 
-// Close closes the log.
+// errLabelsClosed refuses a label after Close. A webhook still being handled
+// when shutdown gives up waiting gets 503 and is redelivered, rather than a
+// 200 for a label that never reached the log.
+var errLabelsClosed = fmt.Errorf("labels: store closed: %w", webhook.ErrUnavailable)
+
+// Close closes the log. Record fails afterwards.
 func (s *LabelStore) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.closed = true
 	if s.log == nil {
 		return nil
 	}
