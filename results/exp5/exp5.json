@@ -8,13 +8,13 @@
     "WARMUP": "5s",
     "DEADLINE": "50ms",
     "RATES": "500 1000 2000 3000 4000 5000 6000 7000 8000 10000 12000 14000 16000 20000 25000 30000",
-    "CONFIGS": "sharded:1 sharded:4 sharded:16 sharded:64 locked syncmap",
+    "CONFIGS": "sharded:4 sharded:64 locked syncmap",
     "SERVER_PROCS": "",
     "LOADGEN_PROCS": ""
   },
-  "git_commit": "2e59251316e7bfe67102862b9f942e05896214a4",
-  "started": "2026-09-23T23:44:04Z",
-  "finished": "2026-09-24T00:11:28Z",
+  "git_commit": "0c341c108c02d2d0406d3a56c39fe057d7d3c17b",
+  "started": "2026-09-24T23:17:08Z",
+  "finished": "2026-09-24T23:29:55Z",
   "machine": {
     "cpu": "Apple M3 Pro",
     "performance_cores": 6,
@@ -30,9 +30,9 @@
     "loadgen": "default (all logical CPUs)"
   },
   "load_average_1min_before_each_rate": {
-    "min": 10.49,
-    "median": 38.75,
-    "max": 66.19
+    "min": 10.04,
+    "median": 83.69,
+    "max": 144.59
   },
   "shared_machine_warning": "Server and load generator ran on the same machine, which was shared with other heavy jobs. Re-run on a quiet machine before quoting.",
   "data_provenance": {
@@ -48,557 +48,261 @@
   "configs": {
     "locked": {
       "max_rate_inside_deadline_per_rep": [
-        1000,
-        500
-      ],
-      "max_rate_inside_deadline_median": 750.0,
-      "rates": [
-        {
-          "target_rps": 500,
-          "reps": 2,
-          "achieved_rps_median": 500.03440215700414,
-          "p50_ms_median": 1.639,
-          "p99_ms_median": 14.507,
-          "p99_9_ms_median": 94.07900000000001,
-          "p99_ms_min": 14.415,
-          "p99_ms_max": 14.599,
-          "send_lag_p99_ms_median": 4.062,
-          "reps_inside_deadline": 2
-        },
-        {
-          "target_rps": 1000,
-          "reps": 2,
-          "achieved_rps_median": 1000.0006211572654,
-          "p50_ms_median": 1.7465000000000002,
-          "p99_ms_median": 49.455,
-          "p99_9_ms_median": 88.607,
-          "p99_ms_min": 43.071,
-          "p99_ms_max": 55.839,
-          "send_lag_p99_ms_median": 5.917,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 2000,
-          "reps": 2,
-          "achieved_rps_median": 2000.0588928659556,
-          "p50_ms_median": 2.174,
-          "p99_ms_median": 128.671,
-          "p99_9_ms_median": 198.143,
-          "p99_ms_min": 127.103,
-          "p99_ms_max": 130.239,
-          "send_lag_p99_ms_median": 26.198999999999998,
-          "reps_inside_deadline": 0
-        },
-        {
-          "target_rps": 3000,
-          "reps": 1,
-          "achieved_rps_median": 3000.4760896753737,
-          "p50_ms_median": 4.383,
-          "p99_ms_median": 178.175,
-          "p99_9_ms_median": 319.487,
-          "p99_ms_min": 178.175,
-          "p99_ms_max": 178.175,
-          "send_lag_p99_ms_median": 27.823,
-          "reps_inside_deadline": 0
-        }
-      ],
-      "server_metrics_at_end": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8184875e+07\nriskgate_velocity_keys 43570",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.3844582e+07\nriskgate_velocity_keys 32737"
-      ]
-    },
-    "sharded-1": {
-      "max_rate_inside_deadline_per_rep": [
-        8000,
+        null,
         1000
       ],
-      "max_rate_inside_deadline_median": 4500.0,
+      "max_rate_inside_deadline_median": 500.0,
       "rates": [
         {
           "target_rps": 500,
           "reps": 2,
-          "achieved_rps_median": 499.983602034863,
-          "p50_ms_median": 1.196,
-          "p99_ms_median": 18.985,
-          "p99_9_ms_median": 47.709,
-          "p99_ms_min": 2.387,
-          "p99_ms_max": 35.583,
-          "send_lag_p99_ms_median": 2.7045,
-          "reps_inside_deadline": 2
+          "achieved_rps_median": 499.96931226971856,
+          "p50_ms_median": 2.911,
+          "p99_ms_median": 2261.503,
+          "p99_9_ms_median": 2476.0310000000004,
+          "p99_ms_min": 492.543,
+          "p99_ms_max": 4030.463,
+          "send_lag_p99_ms_median": 53.022999999999996,
+          "reps_inside_deadline": 0
         },
         {
           "target_rps": 1000,
           "reps": 2,
-          "achieved_rps_median": 1000.0381057963739,
-          "p50_ms_median": 0.9970000000000001,
-          "p99_ms_median": 23.654999999999998,
-          "p99_9_ms_median": 89.71100000000001,
-          "p99_ms_min": 4.751,
-          "p99_ms_max": 42.559,
-          "send_lag_p99_ms_median": 2.096,
-          "reps_inside_deadline": 2
+          "achieved_rps_median": 1000.0018429166482,
+          "p50_ms_median": 1.7525,
+          "p99_ms_median": 675.519,
+          "p99_9_ms_median": 752.991,
+          "p99_ms_min": 36.223,
+          "p99_ms_max": 1314.815,
+          "send_lag_p99_ms_median": 10.679,
+          "reps_inside_deadline": 1
         },
         {
           "target_rps": 2000,
-          "reps": 2,
-          "achieved_rps_median": 1999.9726997838738,
-          "p50_ms_median": 1.0925,
-          "p99_ms_median": 95.896,
-          "p99_9_ms_median": 178.507,
-          "p99_ms_min": 1.713,
-          "p99_ms_max": 190.079,
-          "send_lag_p99_ms_median": 9.2635,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 3000,
-          "reps": 2,
-          "achieved_rps_median": 3000.0426078403198,
-          "p50_ms_median": 3.4995,
-          "p99_ms_median": 335.44100000000003,
-          "p99_9_ms_median": 715.555,
-          "p99_ms_min": 3.235,
-          "p99_ms_max": 667.647,
-          "send_lag_p99_ms_median": 59.7715,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 4000,
           "reps": 1,
-          "achieved_rps_median": 4000.1340311662716,
-          "p50_ms_median": 0.322,
-          "p99_ms_median": 14.599,
-          "p99_9_ms_median": 39.007,
-          "p99_ms_min": 14.599,
-          "p99_ms_max": 14.599,
-          "send_lag_p99_ms_median": 3.671,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 5000,
-          "reps": 1,
-          "achieved_rps_median": 5000.004864803382,
-          "p50_ms_median": 0.275,
-          "p99_ms_median": 7.975,
-          "p99_9_ms_median": 21.407,
-          "p99_ms_min": 7.975,
-          "p99_ms_max": 7.975,
-          "send_lag_p99_ms_median": 1.459,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 6000,
-          "reps": 1,
-          "achieved_rps_median": 6003.147376244991,
-          "p50_ms_median": 0.296,
-          "p99_ms_median": 5.287,
-          "p99_9_ms_median": 21.759,
-          "p99_ms_min": 5.287,
-          "p99_ms_max": 5.287,
-          "send_lag_p99_ms_median": 1.186,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 7000,
-          "reps": 1,
-          "achieved_rps_median": 6999.992087452425,
-          "p50_ms_median": 0.291,
-          "p99_ms_median": 3.509,
-          "p99_9_ms_median": 29.727,
-          "p99_ms_min": 3.509,
-          "p99_ms_max": 3.509,
-          "send_lag_p99_ms_median": 0.71,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 8000,
-          "reps": 1,
-          "achieved_rps_median": 8000.003000019875,
-          "p50_ms_median": 0.27,
-          "p99_ms_median": 12.455,
-          "p99_9_ms_median": 50.399,
-          "p99_ms_min": 12.455,
-          "p99_ms_max": 12.455,
-          "send_lag_p99_ms_median": 1.071,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 10000,
-          "reps": 1,
-          "achieved_rps_median": 9999.990416461265,
-          "p50_ms_median": 0.336,
-          "p99_ms_median": 53.247,
-          "p99_9_ms_median": 151.295,
-          "p99_ms_min": 53.247,
-          "p99_ms_max": 53.247,
-          "send_lag_p99_ms_median": 2.989,
+          "achieved_rps_median": 1999.8244985138151,
+          "p50_ms_median": 1.375,
+          "p99_ms_median": 874.495,
+          "p99_9_ms_median": 1120.255,
+          "p99_ms_min": 874.495,
+          "p99_ms_max": 874.495,
+          "send_lag_p99_ms_median": 451.839,
           "reps_inside_deadline": 0
         },
         {
-          "target_rps": 12000,
+          "target_rps": 3000,
           "reps": 1,
-          "achieved_rps_median": 12000.279407669741,
-          "p50_ms_median": 0.382,
-          "p99_ms_median": 179.327,
-          "p99_9_ms_median": 293.119,
-          "p99_ms_min": 179.327,
-          "p99_ms_max": 179.327,
-          "send_lag_p99_ms_median": 15.367,
+          "achieved_rps_median": 3000.414632958505,
+          "p50_ms_median": 1.153,
+          "p99_ms_median": 655.359,
+          "p99_9_ms_median": 961.535,
+          "p99_ms_min": 655.359,
+          "p99_ms_max": 655.359,
+          "send_lag_p99_ms_median": 192.255,
           "reps_inside_deadline": 0
         }
       ],
       "server_metrics_at_end": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.38432496e+08\nriskgate_velocity_keys 50698",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8185086e+07\nriskgate_velocity_keys 43570"
-      ]
-    },
-    "sharded-16": {
-      "max_rate_inside_deadline_per_rep": [
-        3000,
-        3000
-      ],
-      "max_rate_inside_deadline_median": 3000.0,
-      "rates": [
-        {
-          "target_rps": 500,
-          "reps": 2,
-          "achieved_rps_median": 499.99907490946975,
-          "p50_ms_median": 1.371,
-          "p99_ms_median": 35.747,
-          "p99_9_ms_median": 80.36699999999999,
-          "p99_ms_min": 14.791,
-          "p99_ms_max": 56.703,
-          "send_lag_p99_ms_median": 11.09,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 1000,
-          "reps": 2,
-          "achieved_rps_median": 1000.0004083641118,
-          "p50_ms_median": 1.0495,
-          "p99_ms_median": 6.8149999999999995,
-          "p99_9_ms_median": 23.015,
-          "p99_ms_min": 4.207,
-          "p99_ms_max": 9.423,
-          "send_lag_p99_ms_median": 2.183,
-          "reps_inside_deadline": 2
-        },
-        {
-          "target_rps": 2000,
-          "reps": 2,
-          "achieved_rps_median": 1999.997393699041,
-          "p50_ms_median": 0.869,
-          "p99_ms_median": 9.184999999999999,
-          "p99_9_ms_median": 28.719,
-          "p99_ms_min": 8.059,
-          "p99_ms_max": 10.311,
-          "send_lag_p99_ms_median": 2.1795,
-          "reps_inside_deadline": 2
-        },
-        {
-          "target_rps": 3000,
-          "reps": 2,
-          "achieved_rps_median": 3000.067781605651,
-          "p50_ms_median": 0.9564999999999999,
-          "p99_ms_median": 23.703,
-          "p99_9_ms_median": 60.031000000000006,
-          "p99_ms_min": 10.671,
-          "p99_ms_max": 36.735,
-          "send_lag_p99_ms_median": 3.0309999999999997,
-          "reps_inside_deadline": 2
-        },
-        {
-          "target_rps": 4000,
-          "reps": 2,
-          "achieved_rps_median": 3999.994162439377,
-          "p50_ms_median": 4.631,
-          "p99_ms_median": 267.77500000000003,
-          "p99_9_ms_median": 544.703,
-          "p99_ms_min": 118.527,
-          "p99_ms_max": 417.023,
-          "send_lag_p99_ms_median": 19.517,
-          "reps_inside_deadline": 0
-        },
-        {
-          "target_rps": 5000,
-          "reps": 2,
-          "achieved_rps_median": 5000.021932632031,
-          "p50_ms_median": 2.0595,
-          "p99_ms_median": 198.399,
-          "p99_9_ms_median": 355.647,
-          "p99_ms_min": 133.631,
-          "p99_ms_max": 263.167,
-          "send_lag_p99_ms_median": 17.192999999999998,
-          "reps_inside_deadline": 0
-        }
-      ],
-      "server_metrics_at_end": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 3.7019248e+07\nriskgate_velocity_keys 50698",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 3.7019248e+07\nriskgate_velocity_keys 50698"
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.573555e+06\nriskgate_velocity_keys 19420",
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8185067e+07\nriskgate_velocity_keys 43570"
       ]
     },
     "sharded-4": {
       "max_rate_inside_deadline_per_rep": [
-        5000,
-        1000
+        null,
+        null
       ],
-      "max_rate_inside_deadline_median": 3000.0,
+      "max_rate_inside_deadline_median": 0.0,
       "rates": [
         {
           "target_rps": 500,
           "reps": 2,
-          "achieved_rps_median": 500.0029956227255,
-          "p50_ms_median": 1.225,
-          "p99_ms_median": 11.791,
-          "p99_9_ms_median": 29.019,
-          "p99_ms_min": 4.959,
-          "p99_ms_max": 18.623,
-          "send_lag_p99_ms_median": 3.0185,
-          "reps_inside_deadline": 2
+          "achieved_rps_median": 499.9982571500709,
+          "p50_ms_median": 1.4955,
+          "p99_ms_median": 75.39099999999999,
+          "p99_9_ms_median": 159.103,
+          "p99_ms_min": 71.295,
+          "p99_ms_max": 79.487,
+          "send_lag_p99_ms_median": 17.887,
+          "reps_inside_deadline": 0
         },
         {
           "target_rps": 1000,
           "reps": 2,
-          "achieved_rps_median": 999.9984937021417,
-          "p50_ms_median": 1.132,
-          "p99_ms_median": 23.9985,
-          "p99_9_ms_median": 47.459,
-          "p99_ms_min": 1.47,
-          "p99_ms_max": 46.527,
-          "send_lag_p99_ms_median": 3.0965,
-          "reps_inside_deadline": 2
-        },
-        {
-          "target_rps": 2000,
-          "reps": 2,
-          "achieved_rps_median": 2000.0160610533248,
-          "p50_ms_median": 1.99,
-          "p99_ms_median": 76.34299999999999,
-          "p99_9_ms_median": 126.54299999999999,
-          "p99_ms_min": 13.807,
-          "p99_ms_max": 138.879,
-          "send_lag_p99_ms_median": 13.424999999999999,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 3000,
-          "reps": 2,
-          "achieved_rps_median": 3000.03165424641,
-          "p50_ms_median": 2.031,
-          "p99_ms_median": 286.335,
-          "p99_9_ms_median": 499.10299999999995,
-          "p99_ms_min": 24.319,
-          "p99_ms_max": 548.351,
-          "send_lag_p99_ms_median": 41.664,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 4000,
-          "reps": 1,
-          "achieved_rps_median": 3999.987758284443,
-          "p50_ms_median": 0.888,
-          "p99_ms_median": 72.511,
-          "p99_9_ms_median": 149.247,
-          "p99_ms_min": 72.511,
-          "p99_ms_max": 72.511,
-          "send_lag_p99_ms_median": 6.423,
-          "reps_inside_deadline": 0
-        },
-        {
-          "target_rps": 5000,
-          "reps": 1,
-          "achieved_rps_median": 4999.986124899753,
-          "p50_ms_median": 0.89,
-          "p99_ms_median": 40.063,
-          "p99_9_ms_median": 91.647,
-          "p99_ms_min": 40.063,
-          "p99_ms_max": 40.063,
-          "send_lag_p99_ms_median": 3.075,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 6000,
-          "reps": 1,
-          "achieved_rps_median": 5375.95379213662,
-          "p50_ms_median": 0.709,
-          "p99_ms_median": 5783.551,
-          "p99_9_ms_median": 5906.431,
-          "p99_ms_min": 5783.551,
-          "p99_ms_max": 5783.551,
-          "send_lag_p99_ms_median": 2328.575,
-          "reps_inside_deadline": 0
-        },
-        {
-          "target_rps": 7000,
-          "reps": 1,
-          "achieved_rps_median": 2879.3420129795577,
-          "p50_ms_median": 16031.743,
-          "p99_ms_median": 30867.455,
-          "p99_9_ms_median": 31096.831,
-          "p99_ms_min": 30867.455,
-          "p99_ms_max": 30867.455,
-          "send_lag_p99_ms_median": 28639.231,
+          "achieved_rps_median": 1000.1533181193607,
+          "p50_ms_median": 1.7915,
+          "p99_ms_median": 220.287,
+          "p99_9_ms_median": 286.975,
+          "p99_ms_min": 79.615,
+          "p99_ms_max": 360.959,
+          "send_lag_p99_ms_median": 25.379,
           "reps_inside_deadline": 0
         }
       ],
       "server_metrics_at_end": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 6.4579504e+07\nriskgate_velocity_keys 50698",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8185067e+07\nriskgate_velocity_keys 43570"
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.593984e+06\nriskgate_velocity_keys 19420",
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.593984e+06\nriskgate_velocity_keys 19420"
       ]
     },
     "sharded-64": {
       "max_rate_inside_deadline_per_rep": [
         null,
-        1000
+        null
       ],
-      "max_rate_inside_deadline_median": 500.0,
+      "max_rate_inside_deadline_median": 0.0,
       "rates": [
         {
           "target_rps": 500,
           "reps": 2,
-          "achieved_rps_median": 499.99969009073766,
-          "p50_ms_median": 1.8135,
-          "p99_ms_median": 73.779,
-          "p99_9_ms_median": 138.895,
-          "p99_ms_min": 12.647,
-          "p99_ms_max": 134.911,
-          "send_lag_p99_ms_median": 6.739000000000001,
-          "reps_inside_deadline": 1
+          "achieved_rps_median": 500.00536626892887,
+          "p50_ms_median": 2.0330000000000004,
+          "p99_ms_median": 626.655,
+          "p99_9_ms_median": 748.031,
+          "p99_ms_min": 92.095,
+          "p99_ms_max": 1161.215,
+          "send_lag_p99_ms_median": 8.695,
+          "reps_inside_deadline": 0
         },
         {
           "target_rps": 1000,
           "reps": 2,
-          "achieved_rps_median": 999.9936393224625,
-          "p50_ms_median": 1.3605,
-          "p99_ms_median": 50.527,
-          "p99_9_ms_median": 110.12700000000001,
-          "p99_ms_min": 24.511,
-          "p99_ms_max": 76.543,
-          "send_lag_p99_ms_median": 8.344999999999999,
-          "reps_inside_deadline": 1
-        },
-        {
-          "target_rps": 2000,
-          "reps": 1,
-          "achieved_rps_median": 2000.281896773722,
-          "p50_ms_median": 1.79,
-          "p99_ms_median": 84.927,
-          "p99_9_ms_median": 177.663,
-          "p99_ms_min": 84.927,
-          "p99_ms_max": 84.927,
-          "send_lag_p99_ms_median": 21.167,
-          "reps_inside_deadline": 0
-        },
-        {
-          "target_rps": 3000,
-          "reps": 1,
-          "achieved_rps_median": 3001.100722103564,
-          "p50_ms_median": 5.095,
-          "p99_ms_median": 615.423,
-          "p99_9_ms_median": 820.735,
-          "p99_ms_min": 615.423,
-          "p99_ms_max": 615.423,
-          "send_lag_p99_ms_median": 281.087,
+          "achieved_rps_median": 1000.0097798459856,
+          "p50_ms_median": 1.4649999999999999,
+          "p99_ms_median": 77.231,
+          "p99_9_ms_median": 126.111,
+          "p99_ms_min": 50.783,
+          "p99_ms_max": 103.679,
+          "send_lag_p99_ms_median": 18.491,
           "reps_inside_deadline": 0
         }
       ],
       "server_metrics_at_end": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.594003e+06\nriskgate_velocity_keys 19420",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8185067e+07\nriskgate_velocity_keys 43570"
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.594022e+06\nriskgate_velocity_keys 19420",
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.593984e+06\nriskgate_velocity_keys 19420"
       ]
     },
     "syncmap": {
       "max_rate_inside_deadline_per_rep": [
         null,
-        1000
+        3000
       ],
-      "max_rate_inside_deadline_median": 500.0,
+      "max_rate_inside_deadline_median": 1500.0,
       "rates": [
         {
           "target_rps": 500,
           "reps": 2,
-          "achieved_rps_median": 500.0104019368579,
-          "p50_ms_median": 1.8525,
-          "p99_ms_median": 36.759,
-          "p99_9_ms_median": 70.807,
-          "p99_ms_min": 5.487,
-          "p99_ms_max": 68.031,
-          "send_lag_p99_ms_median": 4.8505,
+          "achieved_rps_median": 500.01650156508276,
+          "p50_ms_median": 2.144,
+          "p99_ms_median": 526.511,
+          "p99_9_ms_median": 616.799,
+          "p99_ms_min": 23.903,
+          "p99_ms_max": 1029.119,
+          "send_lag_p99_ms_median": 9.919,
           "reps_inside_deadline": 1
         },
         {
           "target_rps": 1000,
           "reps": 2,
-          "achieved_rps_median": 999.9963270047617,
-          "p50_ms_median": 1.7605,
-          "p99_ms_median": 36.793,
-          "p99_9_ms_median": 66.695,
-          "p99_ms_min": 6.451,
-          "p99_ms_max": 67.135,
-          "send_lag_p99_ms_median": 6.604,
+          "achieved_rps_median": 1000.0045745422672,
+          "p50_ms_median": 1.525,
+          "p99_ms_median": 404.591,
+          "p99_9_ms_median": 488.575,
+          "p99_ms_min": 42.207,
+          "p99_ms_max": 766.975,
+          "send_lag_p99_ms_median": 68.607,
           "reps_inside_deadline": 1
         },
         {
           "target_rps": 2000,
           "reps": 1,
-          "achieved_rps_median": 1999.9998708967805,
-          "p50_ms_median": 1.803,
-          "p99_ms_median": 173.311,
-          "p99_9_ms_median": 266.751,
-          "p99_ms_min": 173.311,
-          "p99_ms_max": 173.311,
-          "send_lag_p99_ms_median": 49.503,
+          "achieved_rps_median": 2000.0425727704978,
+          "p50_ms_median": 5.747,
+          "p99_ms_median": 3454.975,
+          "p99_9_ms_median": 4030.463,
+          "p99_ms_min": 3454.975,
+          "p99_ms_max": 3454.975,
+          "send_lag_p99_ms_median": 460.287,
           "reps_inside_deadline": 0
         },
         {
           "target_rps": 3000,
           "reps": 1,
-          "achieved_rps_median": 2999.95407483762,
-          "p50_ms_median": 3.205,
-          "p99_ms_median": 214.143,
-          "p99_9_ms_median": 314.111,
-          "p99_ms_min": 214.143,
-          "p99_ms_max": 214.143,
-          "send_lag_p99_ms_median": 24.639,
+          "achieved_rps_median": 2999.9887186043993,
+          "p50_ms_median": 0.843,
+          "p99_ms_median": 33.631,
+          "p99_9_ms_median": 80.191,
+          "p99_ms_min": 33.631,
+          "p99_ms_max": 33.631,
+          "send_lag_p99_ms_median": 7.487,
+          "reps_inside_deadline": 1
+        },
+        {
+          "target_rps": 4000,
+          "reps": 1,
+          "achieved_rps_median": 4000.0358007679265,
+          "p50_ms_median": 0.956,
+          "p99_ms_median": 83.391,
+          "p99_9_ms_median": 176.127,
+          "p99_ms_min": 83.391,
+          "p99_ms_max": 83.391,
+          "send_lag_p99_ms_median": 17.279,
+          "reps_inside_deadline": 0
+        },
+        {
+          "target_rps": 5000,
+          "reps": 1,
+          "achieved_rps_median": 5000.010823131659,
+          "p50_ms_median": 1.309,
+          "p99_ms_median": 141.439,
+          "p99_9_ms_median": 269.823,
+          "p99_ms_min": 141.439,
+          "p99_ms_max": 141.439,
+          "send_lag_p99_ms_median": 24.447,
           "reps_inside_deadline": 0
         }
       ],
       "server_metrics_at_end": [
         "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.0458304e+07\nriskgate_velocity_keys 19420",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 2.2367806e+07\nriskgate_velocity_keys 43570"
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 4.1886256e+07\nriskgate_velocity_keys 50698"
       ]
     }
   },
   "benchmarks": {
     "BenchmarkAssessPipeline": {
       "runs": 5,
-      "ns_per_op_median": 188939.0,
-      "ns_per_op_min": 177753.0,
-      "ns_per_op_max": 197425.0
+      "ns_per_op_median": 426764.0,
+      "ns_per_op_min": 373983.0,
+      "ns_per_op_max": 919202.0
     },
     "BenchmarkAssessHandler": {
       "runs": 5,
-      "ns_per_op_median": 286452.0,
-      "ns_per_op_min": 214819.0,
-      "ns_per_op_max": 296131.0
+      "ns_per_op_median": 451446.0,
+      "ns_per_op_min": 363693.0,
+      "ns_per_op_max": 1143404.0
     },
     "BenchmarkAssessHTTP": {
       "runs": 5,
-      "ns_per_op_median": 472504.0,
-      "ns_per_op_min": 372230.0,
-      "ns_per_op_max": 904954.0
+      "ns_per_op_median": 985118.0,
+      "ns_per_op_min": 803672.0,
+      "ns_per_op_max": 1166144.0
     },
     "BenchmarkModel/Score": {
       "runs": 5,
-      "ns_per_op_median": 78430.0,
-      "ns_per_op_min": 73973.0,
-      "ns_per_op_max": 83384.0
+      "ns_per_op_median": 305235.0,
+      "ns_per_op_min": 236811.0,
+      "ns_per_op_max": 384416.0
     },
     "BenchmarkModel/Contributions": {
       "runs": 5,
-      "ns_per_op_median": 87737.0,
-      "ns_per_op_min": 85178.0,
-      "ns_per_op_max": 107220.0
+      "ns_per_op_median": 370548.0,
+      "ns_per_op_min": 323014.0,
+      "ns_per_op_max": 417492.0
+    },
+    "BenchmarkModel/ScoreContributions": {
+      "runs": 5,
+      "ns_per_op_median": 369021.0,
+      "ns_per_op_min": 319345.0,
+      "ns_per_op_max": 388802.0
     }
   },
   "raw_runs": {
@@ -606,36 +310,36 @@
       "500": [
         {
           "rep": "rep1",
-          "achieved_rps": 500.0181951815571,
+          "achieved_rps": 499.93774945039684,
           "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
+          "ok": 9690,
+          "errors": 310,
           "timeouts": 0,
           "non_2xx": 0,
           "latency_ms": {
-            "count": 10000,
-            "mean": 2.678667900000002,
-            "p50": 1.685,
-            "p90": 4.203,
-            "p99": 14.415,
-            "p99_9": 100.863,
-            "max": 126.719
+            "count": 9690,
+            "mean": 569.5649051599587,
+            "p50": 4.423,
+            "p90": 2594.815,
+            "p99": 4030.463,
+            "p99_9": 4280.319,
+            "max": 4300.799
           },
           "send_lag_ms": {
             "count": 10000,
-            "mean": 0.724044,
-            "p50": 0.249,
-            "p90": 1.246,
-            "p99": 4.575,
-            "p99_9": 68.671,
-            "max": 88.447
+            "mean": 1.4282924,
+            "p50": 0.305,
+            "p90": 2.801,
+            "p99": 20.799,
+            "p99_9": 78.271,
+            "max": 105.983
           },
-          "inside_deadline": true,
-          "load_average_before": "54.32 38.97 33.26"
+          "inside_deadline": false,
+          "load_average_before": "68.98 29.62 18.04"
         },
         {
           "rep": "rep2",
-          "achieved_rps": 500.0506091324512,
+          "achieved_rps": 500.0008750890403,
           "sent": 10000,
           "ok": 10000,
           "errors": 0,
@@ -643,59 +347,59 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 10000,
-            "mean": 2.4181544000000006,
-            "p50": 1.593,
-            "p90": 3.969,
-            "p99": 14.599,
-            "p99_9": 87.295,
-            "max": 123.391
+            "mean": 17.4667716,
+            "p50": 1.399,
+            "p90": 14.343,
+            "p99": 492.543,
+            "p99_9": 671.743,
+            "max": 767.487
           },
           "send_lag_ms": {
             "count": 10000,
-            "mean": 0.5209139,
-            "p50": 0.311,
-            "p90": 1.102,
-            "p99": 3.549,
-            "p99_9": 7.823,
-            "max": 21.007
+            "mean": 3.4265936000000004,
+            "p50": 0.239,
+            "p90": 4.487,
+            "p99": 85.247,
+            "p99_9": 175.871,
+            "max": 209.663
           },
-          "inside_deadline": true,
-          "load_average_before": "43.63 40.36 38.18"
+          "inside_deadline": false,
+          "load_average_before": "133.11 80.38 42.81"
         }
       ],
       "1000": [
         {
           "rep": "rep1",
-          "achieved_rps": 1000.0179658210399,
+          "achieved_rps": 999.9920392653338,
           "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
+          "ok": 19668,
+          "errors": 332,
           "timeouts": 0,
           "non_2xx": 0,
           "latency_ms": {
-            "count": 20000,
-            "mean": 3.6143916000000007,
-            "p50": 1.659,
-            "p90": 6.411,
-            "p99": 43.071,
-            "p99_9": 85.439,
-            "max": 105.215
+            "count": 19668,
+            "mean": 124.3751731746999,
+            "p50": 2.111,
+            "p90": 510.975,
+            "p99": 1314.815,
+            "p99_9": 1439.743,
+            "max": 1469.439
           },
           "send_lag_ms": {
             "count": 20000,
-            "mean": 0.5620157499999994,
-            "p50": 0.209,
-            "p90": 1.299,
-            "p99": 5.075,
-            "p99_9": 20.511,
-            "max": 29.151
+            "mean": 0.9339710499999989,
+            "p50": 0.175,
+            "p90": 2.209,
+            "p99": 12.567,
+            "p99_9": 36.351,
+            "max": 66.623
           },
-          "inside_deadline": true,
-          "load_average_before": "55.72 40.54 33.99"
+          "inside_deadline": false,
+          "load_average_before": "75.66 34.53 20.16"
         },
         {
           "rep": "rep2",
-          "achieved_rps": 999.9832764934911,
+          "achieved_rps": 1000.0116465679625,
           "sent": 20000,
           "ok": 20000,
           "errors": 0,
@@ -703,59 +407,34 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 20000,
-            "mean": 4.587456099999994,
-            "p50": 1.834,
-            "p90": 8.871,
-            "p99": 55.839,
-            "p99_9": 91.775,
-            "max": 153.343
+            "mean": 3.857892549999999,
+            "p50": 1.394,
+            "p90": 9.039,
+            "p99": 36.223,
+            "p99_9": 66.239,
+            "max": 106.431
           },
           "send_lag_ms": {
             "count": 20000,
-            "mean": 0.6811637500000004,
-            "p50": 0.258,
-            "p90": 1.592,
-            "p99": 6.759,
-            "p99_9": 18.031,
-            "max": 32.559
+            "mean": 0.7852703999999999,
+            "p50": 0.168,
+            "p90": 2.089,
+            "p99": 8.791,
+            "p99_9": 28.447,
+            "max": 40.287
           },
-          "inside_deadline": false,
-          "load_average_before": "42.65 40.39 38.25"
+          "inside_deadline": true,
+          "load_average_before": "137.94 85.59 45.77"
         }
+      ],
+      "_metrics": [
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.573555e+06\nriskgate_velocity_keys 19420",
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8185067e+07\nriskgate_velocity_keys 43570"
       ],
       "2000": [
         {
-          "rep": "rep1",
-          "achieved_rps": 2000.0632619824755,
-          "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 40000,
-            "mean": 9.76849004999999,
-            "p50": 2.227,
-            "p90": 24.863,
-            "p99": 127.103,
-            "p99_9": 196.479,
-            "max": 301.311
-          },
-          "send_lag_ms": {
-            "count": 40000,
-            "mean": 1.639933199999999,
-            "p50": 0.152,
-            "p90": 1.831,
-            "p99": 33.823,
-            "p99_9": 131.839,
-            "max": 147.327
-          },
-          "inside_deadline": false,
-          "load_average_before": "58.89 42.76 35.02"
-        },
-        {
           "rep": "rep2",
-          "achieved_rps": 2000.0545237494357,
+          "achieved_rps": 1999.8244985138151,
           "sent": 40000,
           "ok": 40000,
           "errors": 0,
@@ -763,30 +442,30 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 40000,
-            "mean": 11.621839199999991,
-            "p50": 2.121,
-            "p90": 36.735,
-            "p99": 130.239,
-            "p99_9": 199.807,
-            "max": 440.063
+            "mean": 56.66862140000012,
+            "p50": 1.375,
+            "p90": 148.351,
+            "p99": 874.495,
+            "p99_9": 1120.255,
+            "max": 1238.015
           },
           "send_lag_ms": {
             "count": 40000,
-            "mean": 0.9404627250000005,
-            "p50": 0.179,
-            "p90": 1.427,
-            "p99": 18.575,
-            "p99_9": 44.735,
-            "max": 72.511
+            "mean": 19.02302672499999,
+            "p50": 0.134,
+            "p90": 18.735,
+            "p99": 451.839,
+            "p99_9": 767.999,
+            "max": 779.775
           },
           "inside_deadline": false,
-          "load_average_before": "52.16 42.60 39.10"
+          "load_average_before": "124.75 86.84 47.38"
         }
       ],
       "3000": [
         {
-          "rep": "rep1",
-          "achieved_rps": 3000.4760896753737,
+          "rep": "rep2",
+          "achieved_rps": 3000.414632958505,
           "sent": 60000,
           "ok": 60000,
           "errors": 0,
@@ -794,865 +473,32 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 60000,
-            "mean": 20.293862583333276,
-            "p50": 4.383,
-            "p90": 61.151,
-            "p99": 178.175,
-            "p99_9": 319.487,
-            "max": 560.639
+            "mean": 39.977709383333384,
+            "p50": 1.153,
+            "p90": 91.071,
+            "p99": 655.359,
+            "p99_9": 961.535,
+            "max": 1083.391
           },
           "send_lag_ms": {
             "count": 60000,
-            "mean": 1.465284183333332,
-            "p50": 0.139,
-            "p90": 2.631,
-            "p99": 27.823,
-            "p99_9": 59.743,
-            "max": 70.783
+            "mean": 7.548446133333336,
+            "p50": 0.1,
+            "p90": 6.651,
+            "p99": 192.255,
+            "p99_9": 299.775,
+            "max": 357.119
           },
           "inside_deadline": false,
-          "load_average_before": "62.89 45.00 36.05"
+          "load_average_before": "115.45 88.04 49.17"
         }
-      ],
-      "_metrics": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8184875e+07\nriskgate_velocity_keys 43570",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.3844582e+07\nriskgate_velocity_keys 32737"
-      ]
-    },
-    "sharded-1": {
-      "500": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 499.99979477956214,
-          "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 10000,
-            "mean": 0.6730649999999998,
-            "p50": 0.581,
-            "p90": 0.854,
-            "p99": 2.387,
-            "p99_9": 6.843,
-            "max": 12.303
-          },
-          "send_lag_ms": {
-            "count": 10000,
-            "mean": 0.2049752000000001,
-            "p50": 0.202,
-            "p90": 0.225,
-            "p99": 0.502,
-            "p99_9": 3.799,
-            "max": 8.903
-          },
-          "inside_deadline": true,
-          "load_average_before": "25.36 25.43 31.73"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 499.9674092901638,
-          "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 10000,
-            "mean": 3.6044410999999967,
-            "p50": 1.811,
-            "p90": 6.543,
-            "p99": 35.583,
-            "p99_9": 88.575,
-            "max": 125.951
-          },
-          "send_lag_ms": {
-            "count": 10000,
-            "mean": 0.6685398000000008,
-            "p50": 0.261,
-            "p90": 1.451,
-            "p99": 4.907,
-            "p99_9": 34.975,
-            "max": 54.495
-          },
-          "inside_deadline": true,
-          "load_average_before": "62.68 49.40 38.55"
-        }
-      ],
-      "1000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 1000.0008312922555,
-          "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 20000,
-            "mean": 0.6797657500000005,
-            "p50": 0.388,
-            "p90": 0.539,
-            "p99": 4.751,
-            "p99_9": 64.415,
-            "max": 80.447
-          },
-          "send_lag_ms": {
-            "count": 20000,
-            "mean": 0.12459520000000002,
-            "p50": 0.099,
-            "p90": 0.122,
-            "p99": 0.833,
-            "p99_9": 3.627,
-            "max": 7.775
-          },
-          "inside_deadline": true,
-          "load_average_before": "18.46 23.81 30.96"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 1000.0753803004924,
-          "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 20000,
-            "mean": 3.3833609499999966,
-            "p50": 1.606,
-            "p90": 5.175,
-            "p99": 42.559,
-            "p99_9": 115.007,
-            "max": 134.015
-          },
-          "send_lag_ms": {
-            "count": 20000,
-            "mean": 0.48136165000000036,
-            "p50": 0.218,
-            "p90": 1.188,
-            "p99": 3.359,
-            "p99_9": 12.119,
-            "max": 21.679
-          },
-          "inside_deadline": true,
-          "load_average_before": "49.51 47.54 38.25"
-        }
-      ],
-      "2000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 1999.986391452381,
-          "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 40000,
-            "mean": 0.3714040000000004,
-            "p50": 0.289,
-            "p90": 0.419,
-            "p99": 1.713,
-            "p99_9": 12.439,
-            "max": 32.159
-          },
-          "send_lag_ms": {
-            "count": 40000,
-            "mean": 0.0704219999999999,
-            "p50": 0.046,
-            "p90": 0.061,
-            "p99": 0.352,
-            "p99_9": 5.411,
-            "max": 13.287
-          },
-          "inside_deadline": true,
-          "load_average_before": "13.06 21.99 30.05"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 1999.9590081153665,
-          "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 40000,
-            "mean": 12.671542550000012,
-            "p50": 1.896,
-            "p90": 29.295,
-            "p99": 190.079,
-            "p99_9": 344.575,
-            "max": 418.047
-          },
-          "send_lag_ms": {
-            "count": 40000,
-            "mean": 1.0549583000000007,
-            "p50": 0.172,
-            "p90": 1.875,
-            "p99": 18.175,
-            "p99_9": 52.287,
-            "max": 62.591
-          },
-          "inside_deadline": false,
-          "load_average_before": "43.74 46.39 38.11"
-        }
-      ],
-      "3000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 3000.075015525957,
-          "sent": 60000,
-          "ok": 60000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 60000,
-            "mean": 0.3989215333333337,
-            "p50": 0.26,
-            "p90": 0.53,
-            "p99": 3.235,
-            "p99_9": 9.799,
-            "max": 25.215
-          },
-          "send_lag_ms": {
-            "count": 60000,
-            "mean": 0.06491376666666658,
-            "p50": 0.03,
-            "p90": 0.076,
-            "p99": 0.888,
-            "p99_9": 3.719,
-            "max": 9.991
-          },
-          "inside_deadline": true,
-          "load_average_before": "10.49 20.66 29.34"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 3000.010200154683,
-          "sent": 60000,
-          "ok": 60000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 60000,
-            "mean": 71.09800176666664,
-            "p50": 6.739,
-            "p90": 230.655,
-            "p99": 667.647,
-            "p99_9": 1421.311,
-            "max": 1626.111
-          },
-          "send_lag_ms": {
-            "count": 60000,
-            "mean": 5.426801383333332,
-            "p50": 0.207,
-            "p90": 9.343,
-            "p99": 118.655,
-            "p99_9": 260.735,
-            "max": 284.415
-          },
-          "inside_deadline": false,
-          "load_average_before": "41.88 45.74 38.12"
-        }
-      ],
-      "4000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 4000.1340311662716,
-          "sent": 80000,
-          "ok": 80000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 80000,
-            "mean": 0.8858960750000031,
-            "p50": 0.322,
-            "p90": 0.859,
-            "p99": 14.599,
-            "p99_9": 39.007,
-            "max": 54.303
-          },
-          "send_lag_ms": {
-            "count": 80000,
-            "mean": 0.17357731250000002,
-            "p50": 0.041,
-            "p90": 0.108,
-            "p99": 3.671,
-            "p99_9": 14.351,
-            "max": 21.903
-          },
-          "inside_deadline": true,
-          "load_average_before": "11.66 20.20 28.92"
-        }
-      ],
-      "5000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 5000.004864803382,
-          "sent": 100000,
-          "ok": 100000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 100000,
-            "mean": 0.556362529999999,
-            "p50": 0.275,
-            "p90": 0.549,
-            "p99": 7.975,
-            "p99_9": 21.407,
-            "max": 49.503
-          },
-          "send_lag_ms": {
-            "count": 100000,
-            "mean": 0.09126706000000008,
-            "p50": 0.04,
-            "p90": 0.08,
-            "p99": 1.459,
-            "p99_9": 7.291,
-            "max": 19.935
-          },
-          "inside_deadline": true,
-          "load_average_before": "14.74 20.32 28.72"
-        }
-      ],
-      "6000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 6003.147376244991,
-          "sent": 120000,
-          "ok": 120000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 120000,
-            "mean": 0.5241336250000009,
-            "p50": 0.296,
-            "p90": 0.65,
-            "p99": 5.287,
-            "p99_9": 21.759,
-            "max": 43.583
-          },
-          "send_lag_ms": {
-            "count": 120000,
-            "mean": 0.09189658333333335,
-            "p50": 0.039,
-            "p90": 0.085,
-            "p99": 1.186,
-            "p99_9": 9.263,
-            "max": 17.135
-          },
-          "inside_deadline": true,
-          "load_average_before": "14.48 19.81 28.29"
-        }
-      ],
-      "7000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 6999.992087452425,
-          "sent": 140000,
-          "ok": 140000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 140000,
-            "mean": 0.48902551428571445,
-            "p50": 0.291,
-            "p90": 0.564,
-            "p99": 3.509,
-            "p99_9": 29.727,
-            "max": 68.671
-          },
-          "send_lag_ms": {
-            "count": 140000,
-            "mean": 0.0710897285714286,
-            "p50": 0.035,
-            "p90": 0.078,
-            "p99": 0.71,
-            "p99_9": 4.707,
-            "max": 19.087
-          },
-          "inside_deadline": true,
-          "load_average_before": "12.81 18.96 27.74"
-        }
-      ],
-      "8000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 8000.003000019875,
-          "sent": 160000,
-          "ok": 160000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 160000,
-            "mean": 0.7422638,
-            "p50": 0.27,
-            "p90": 0.596,
-            "p99": 12.455,
-            "p99_9": 50.399,
-            "max": 136.959
-          },
-          "send_lag_ms": {
-            "count": 160000,
-            "mean": 0.0716693,
-            "p50": 0.03,
-            "p90": 0.072,
-            "p99": 1.071,
-            "p99_9": 4.991,
-            "max": 15.487
-          },
-          "inside_deadline": true,
-          "load_average_before": "12.89 18.48 27.31"
-        }
-      ],
-      "10000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 9999.990416461265,
-          "sent": 200000,
-          "ok": 200000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 200000,
-            "mean": 2.134768450000003,
-            "p50": 0.336,
-            "p90": 1.202,
-            "p99": 53.247,
-            "p99_9": 151.295,
-            "max": 279.039
-          },
-          "send_lag_ms": {
-            "count": 200000,
-            "mean": 0.15159448499999986,
-            "p50": 0.034,
-            "p90": 0.092,
-            "p99": 2.989,
-            "p99_9": 16.183,
-            "max": 31.151
-          },
-          "inside_deadline": false,
-          "load_average_before": "13.57 18.09 26.86"
-        }
-      ],
-      "12000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 12000.279407669741,
-          "sent": 240000,
-          "ok": 240000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 240000,
-            "mean": 8.496775783333323,
-            "p50": 0.382,
-            "p90": 5.219,
-            "p99": 179.327,
-            "p99_9": 293.119,
-            "max": 427.007
-          },
-          "send_lag_ms": {
-            "count": 240000,
-            "mean": 0.5446443166666666,
-            "p50": 0.031,
-            "p90": 0.312,
-            "p99": 15.367,
-            "p99_9": 46.175,
-            "max": 75.071
-          },
-          "inside_deadline": false,
-          "load_average_before": "17.37 18.65 26.81"
-        }
-      ],
-      "_metrics": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.38432496e+08\nriskgate_velocity_keys 50698",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8185086e+07\nriskgate_velocity_keys 43570"
-      ]
-    },
-    "sharded-16": {
-      "500": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 499.9994405696828,
-          "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 10000,
-            "mean": 3.8181114000000003,
-            "p50": 1.684,
-            "p90": 5.815,
-            "p99": 56.703,
-            "p99_9": 102.975,
-            "max": 141.567
-          },
-          "send_lag_ms": {
-            "count": 10000,
-            "mean": 1.0182823,
-            "p50": 0.247,
-            "p90": 1.475,
-            "p99": 19.087,
-            "p99_9": 54.943,
-            "max": 67.071
-          },
-          "inside_deadline": false,
-          "load_average_before": "35.47 28.86 29.20"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 499.9987092492567,
-          "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 10000,
-            "mean": 1.7438751999999982,
-            "p50": 1.058,
-            "p90": 2.523,
-            "p99": 14.791,
-            "p99_9": 57.759,
-            "max": 76.991
-          },
-          "send_lag_ms": {
-            "count": 10000,
-            "mean": 0.3313412000000001,
-            "p50": 0.204,
-            "p90": 0.542,
-            "p99": 3.093,
-            "p99_9": 8.239,
-            "max": 12.199
-          },
-          "inside_deadline": true,
-          "load_average_before": "44.32 46.21 39.52"
-        }
-      ],
-      "1000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 999.9961039703768,
-          "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 20000,
-            "mean": 1.8901653499999966,
-            "p50": 1.284,
-            "p90": 3.669,
-            "p99": 9.423,
-            "p99_9": 27.423,
-            "max": 114.239
-          },
-          "send_lag_ms": {
-            "count": 20000,
-            "mean": 0.3875793000000007,
-            "p50": 0.181,
-            "p90": 0.929,
-            "p99": 2.763,
-            "p99_9": 5.127,
-            "max": 9.311
-          },
-          "inside_deadline": true,
-          "load_average_before": "38.22 30.07 29.62"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 1000.0047127578468,
-          "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 20000,
-            "mean": 1.0472610500000012,
-            "p50": 0.815,
-            "p90": 1.736,
-            "p99": 4.207,
-            "p99_9": 18.607,
-            "max": 35.551
-          },
-          "send_lag_ms": {
-            "count": 20000,
-            "mean": 0.2198694999999997,
-            "p50": 0.123,
-            "p90": 0.452,
-            "p99": 1.603,
-            "p99_9": 3.787,
-            "max": 15.711
-          },
-          "inside_deadline": true,
-          "load_average_before": "35.44 43.95 38.89"
-        }
-      ],
-      "2000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 1999.9927456449534,
-          "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 40000,
-            "mean": 1.314192300000001,
-            "p50": 0.844,
-            "p90": 2.445,
-            "p99": 8.059,
-            "p99_9": 26.863,
-            "max": 184.959
-          },
-          "send_lag_ms": {
-            "count": 40000,
-            "mean": 0.24072379999999988,
-            "p50": 0.106,
-            "p90": 0.61,
-            "p99": 1.878,
-            "p99_9": 4.135,
-            "max": 8.935
-          },
-          "inside_deadline": true,
-          "load_average_before": "37.74 30.58 29.82"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 2000.0020417531282,
-          "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 40000,
-            "mean": 1.4313230250000024,
-            "p50": 0.894,
-            "p90": 2.601,
-            "p99": 10.311,
-            "p99_9": 30.575,
-            "max": 88.575
-          },
-          "send_lag_ms": {
-            "count": 40000,
-            "mean": 0.27368372499999993,
-            "p50": 0.114,
-            "p90": 0.647,
-            "p99": 2.481,
-            "p99_9": 6.775,
-            "max": 15.991
-          },
-          "inside_deadline": true,
-          "load_average_before": "29.34 41.85 38.28"
-        }
-      ],
-      "3000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 3000.117369047726,
-          "sent": 60000,
-          "ok": 60000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 60000,
-            "mean": 2.735073133333332,
-            "p50": 1.031,
-            "p90": 4.815,
-            "p99": 36.735,
-            "p99_9": 89.599,
-            "max": 249.855
-          },
-          "send_lag_ms": {
-            "count": 60000,
-            "mean": 0.35404096666666646,
-            "p50": 0.103,
-            "p90": 0.862,
-            "p99": 3.605,
-            "p99_9": 11.543,
-            "max": 32.335
-          },
-          "inside_deadline": true,
-          "load_average_before": "36.96 30.91 29.95"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 3000.018194163576,
-          "sent": 60000,
-          "ok": 60000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 60000,
-            "mean": 1.433947699999998,
-            "p50": 0.882,
-            "p90": 2.645,
-            "p99": 10.671,
-            "p99_9": 30.463,
-            "max": 117.439
-          },
-          "send_lag_ms": {
-            "count": 60000,
-            "mean": 0.2762339166666661,
-            "p50": 0.101,
-            "p90": 0.605,
-            "p99": 2.457,
-            "p99_9": 14.975,
-            "max": 23.775
-          },
-          "inside_deadline": true,
-          "load_average_before": "28.80 40.65 37.95"
-        }
-      ],
-      "4000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 3999.998074976864,
-          "sent": 80000,
-          "ok": 79999,
-          "errors": 1,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 79999,
-            "mean": 44.01073427167841,
-            "p50": 8.423,
-            "p90": 137.727,
-            "p99": 417.023,
-            "p99_9": 900.607,
-            "max": 1720.319
-          },
-          "send_lag_ms": {
-            "count": 80000,
-            "mean": 1.7627520249999988,
-            "p50": 0.126,
-            "p90": 2.883,
-            "p99": 34.591,
-            "p99_9": 84.479,
-            "max": 116.287
-          },
-          "inside_deadline": false,
-          "load_average_before": "40.47 32.31 30.49"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 3999.9902499018895,
-          "sent": 80000,
-          "ok": 80000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 80000,
-            "mean": 5.272745775000007,
-            "p50": 0.839,
-            "p90": 5.075,
-            "p99": 118.527,
-            "p99_9": 188.799,
-            "max": 296.447
-          },
-          "send_lag_ms": {
-            "count": 80000,
-            "mean": 0.35834357499999936,
-            "p50": 0.083,
-            "p90": 0.587,
-            "p99": 4.443,
-            "p99_9": 31.103,
-            "max": 45.695
-          },
-          "inside_deadline": false,
-          "load_average_before": "29.23 39.60 37.66"
-        }
-      ],
-      "5000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 5000.003698039715,
-          "sent": 100000,
-          "ok": 100000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 100000,
-            "mean": 26.43447675000003,
-            "p50": 3.345,
-            "p90": 90.495,
-            "p99": 263.167,
-            "p99_9": 468.735,
-            "max": 796.159
-          },
-          "send_lag_ms": {
-            "count": 100000,
-            "mean": 1.4637234799999972,
-            "p50": 0.117,
-            "p90": 2.429,
-            "p99": 27.903,
-            "p99_9": 69.759,
-            "max": 101.759
-          },
-          "inside_deadline": false,
-          "load_average_before": "41.71 33.28 30.90"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 5000.040167224347,
-          "sent": 100000,
-          "ok": 100000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 100000,
-            "mean": 5.511938859999995,
-            "p50": 0.774,
-            "p90": 4.359,
-            "p99": 133.631,
-            "p99_9": 242.559,
-            "max": 554.495
-          },
-          "send_lag_ms": {
-            "count": 100000,
-            "mean": 0.4146646799999997,
-            "p50": 0.076,
-            "p90": 0.601,
-            "p99": 6.483,
-            "p99_9": 31.791,
-            "max": 48.415
-          },
-          "inside_deadline": false,
-          "load_average_before": "29.49 38.91 37.47"
-        }
-      ],
-      "_metrics": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 3.7019248e+07\nriskgate_velocity_keys 50698",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 3.7019248e+07\nriskgate_velocity_keys 50698"
       ]
     },
     "sharded-4": {
       "500": [
         {
           "rep": "rep1",
-          "achieved_rps": 500.00461090360653,
+          "achieved_rps": 500.0021804275503,
           "sent": 10000,
           "ok": 10000,
           "errors": 0,
@@ -1660,28 +506,28 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 10000,
-            "mean": 0.7256328000000005,
-            "p50": 0.548,
-            "p90": 0.963,
-            "p99": 4.959,
-            "p99_9": 9.687,
-            "max": 14.591
+            "mean": 3.8201904000000013,
+            "p50": 0.88,
+            "p90": 6.327,
+            "p99": 71.295,
+            "p99_9": 160.895,
+            "max": 175.743
           },
           "send_lag_ms": {
             "count": 10000,
-            "mean": 0.22556050000000025,
-            "p50": 0.203,
-            "p90": 0.233,
-            "p99": 1.474,
-            "p99_9": 5.295,
-            "max": 10.199
+            "mean": 0.7805500999999999,
+            "p50": 0.222,
+            "p90": 1.654,
+            "p99": 9.519,
+            "p99_9": 34.751,
+            "max": 57.855
           },
-          "inside_deadline": true,
-          "load_average_before": "39.64 24.46 28.66"
+          "inside_deadline": false,
+          "load_average_before": "10.04 9.61 10.42"
         },
         {
           "rep": "rep2",
-          "achieved_rps": 500.00138034184454,
+          "achieved_rps": 499.99433387259154,
           "sent": 10000,
           "ok": 10000,
           "errors": 0,
@@ -1689,30 +535,30 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 10000,
-            "mean": 2.9185480999999958,
-            "p50": 1.902,
-            "p90": 5.431,
-            "p99": 18.623,
-            "p99_9": 48.351,
-            "max": 77.055
+            "mean": 6.236723800000001,
+            "p50": 2.111,
+            "p90": 11.927,
+            "p99": 79.487,
+            "p99_9": 157.311,
+            "max": 182.527
           },
           "send_lag_ms": {
             "count": 10000,
-            "mean": 0.6296621999999993,
-            "p50": 0.288,
-            "p90": 1.472,
-            "p99": 4.563,
-            "p99_9": 11.055,
-            "max": 21.775
+            "mean": 1.5987936999999992,
+            "p50": 0.246,
+            "p90": 3.405,
+            "p99": 26.255,
+            "p99_9": 55.423,
+            "max": 65.471
           },
-          "inside_deadline": true,
-          "load_average_before": "49.02 47.05 38.85"
+          "inside_deadline": false,
+          "load_average_before": "60.15 44.85 26.32"
         }
       ],
       "1000": [
         {
           "rep": "rep1",
-          "achieved_rps": 999.9989270475035,
+          "achieved_rps": 1000.0649678687322,
           "sent": 20000,
           "ok": 20000,
           "errors": 0,
@@ -1720,28 +566,28 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 20000,
-            "mean": 0.4355217000000007,
-            "p50": 0.384,
-            "p90": 0.49,
-            "p99": 1.47,
-            "p99_9": 4.807,
-            "max": 14.831
+            "mean": 16.997349350000004,
+            "p50": 1.731,
+            "p90": 19.583,
+            "p99": 360.959,
+            "p99_9": 441.855,
+            "max": 816.639
           },
           "send_lag_ms": {
             "count": 20000,
-            "mean": 0.1046422,
-            "p50": 0.097,
-            "p90": 0.108,
-            "p99": 0.318,
-            "p99_9": 1.731,
-            "max": 7.139
+            "mean": 2.0922489500000014,
+            "p50": 0.166,
+            "p90": 3.617,
+            "p99": 39.231,
+            "p99_9": 116.479,
+            "max": 155.647
           },
-          "inside_deadline": true,
-          "load_average_before": "27.54 22.83 27.95"
+          "inside_deadline": false,
+          "load_average_before": "18.02 11.39 11.03"
         },
         {
           "rep": "rep2",
-          "achieved_rps": 999.9980603567799,
+          "achieved_rps": 1000.2416683699893,
           "sent": 20000,
           "ok": 20000,
           "errors": 0,
@@ -1749,90 +595,317 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 20000,
-            "mean": 3.8698005500000017,
-            "p50": 1.88,
-            "p90": 6.527,
-            "p99": 46.527,
-            "p99_9": 90.111,
-            "max": 214.783
+            "mean": 5.894475649999999,
+            "p50": 1.852,
+            "p90": 11.855,
+            "p99": 79.615,
+            "p99_9": 132.095,
+            "max": 152.831
           },
           "send_lag_ms": {
             "count": 20000,
-            "mean": 0.7928956999999993,
-            "p50": 0.268,
-            "p90": 1.468,
-            "p99": 5.875,
-            "p99_9": 61.503,
-            "max": 75.135
+            "mean": 0.9788407000000015,
+            "p50": 0.203,
+            "p90": 2.657,
+            "p99": 11.527,
+            "p99_9": 24.431,
+            "max": 38.239
+          },
+          "inside_deadline": false,
+          "load_average_before": "105.31 56.84 31.19"
+        }
+      ],
+      "_metrics": [
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.593984e+06\nriskgate_velocity_keys 19420",
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.593984e+06\nriskgate_velocity_keys 19420"
+      ]
+    },
+    "sharded-64": {
+      "500": [
+        {
+          "rep": "rep1",
+          "achieved_rps": 500.0109440339179,
+          "sent": 10000,
+          "ok": 10000,
+          "errors": 0,
+          "timeouts": 0,
+          "non_2xx": 0,
+          "latency_ms": {
+            "count": 10000,
+            "mean": 72.86058429999997,
+            "p50": 2.007,
+            "p90": 92.415,
+            "p99": 1161.215,
+            "p99_9": 1291.263,
+            "max": 1313.791
+          },
+          "send_lag_ms": {
+            "count": 10000,
+            "mean": 0.7918912000000017,
+            "p50": 0.252,
+            "p90": 2.237,
+            "p99": 6.711,
+            "p99_9": 13.151,
+            "max": 24.239
+          },
+          "inside_deadline": false,
+          "load_average_before": "38.83 16.80 12.99"
+        },
+        {
+          "rep": "rep2",
+          "achieved_rps": 499.99978850393984,
+          "sent": 10000,
+          "ok": 10000,
+          "errors": 0,
+          "timeouts": 0,
+          "non_2xx": 0,
+          "latency_ms": {
+            "count": 10000,
+            "mean": 5.846518399999996,
+            "p50": 2.059,
+            "p90": 10.135,
+            "p99": 92.095,
+            "p99_9": 204.799,
+            "max": 256.255
+          },
+          "send_lag_ms": {
+            "count": 10000,
+            "mean": 1.0804700999999992,
+            "p50": 0.296,
+            "p90": 2.607,
+            "p99": 10.679,
+            "p99_9": 43.935,
+            "max": 53.823
+          },
+          "inside_deadline": false,
+          "load_average_before": "130.45 68.00 36.15"
+        }
+      ],
+      "1000": [
+        {
+          "rep": "rep1",
+          "achieved_rps": 999.9992270119482,
+          "sent": 20000,
+          "ok": 20000,
+          "errors": 0,
+          "timeouts": 0,
+          "non_2xx": 0,
+          "latency_ms": {
+            "count": 20000,
+            "mean": 7.349780150000002,
+            "p50": 1.611,
+            "p90": 14.015,
+            "p99": 103.679,
+            "p99_9": 149.247,
+            "max": 162.303
+          },
+          "send_lag_ms": {
+            "count": 20000,
+            "mean": 1.0584653499999988,
+            "p50": 0.163,
+            "p90": 2.851,
+            "p99": 13.111,
+            "p99_9": 32.383,
+            "max": 42.495
+          },
+          "inside_deadline": false,
+          "load_average_before": "64.52 25.40 16.25"
+        },
+        {
+          "rep": "rep2",
+          "achieved_rps": 1000.0203326800229,
+          "sent": 20000,
+          "ok": 20000,
+          "errors": 0,
+          "timeouts": 0,
+          "non_2xx": 0,
+          "latency_ms": {
+            "count": 20000,
+            "mean": 3.4161205499999996,
+            "p50": 1.319,
+            "p90": 6.275,
+            "p99": 50.783,
+            "p99_9": 102.975,
+            "max": 123.007
+          },
+          "send_lag_ms": {
+            "count": 20000,
+            "mean": 1.1853410999999998,
+            "p50": 0.173,
+            "p90": 1.686,
+            "p99": 23.871,
+            "p99_9": 82.303,
+            "max": 105.983
+          },
+          "inside_deadline": false,
+          "load_average_before": "144.59 76.37 40.08"
+        }
+      ],
+      "_metrics": [
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.594022e+06\nriskgate_velocity_keys 19420",
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.593984e+06\nriskgate_velocity_keys 19420"
+      ]
+    },
+    "syncmap": {
+      "500": [
+        {
+          "rep": "rep1",
+          "achieved_rps": 500.0433872779364,
+          "sent": 10000,
+          "ok": 10000,
+          "errors": 0,
+          "timeouts": 0,
+          "non_2xx": 0,
+          "latency_ms": {
+            "count": 10000,
+            "mean": 89.57297300000003,
+            "p50": 2.845,
+            "p90": 339.199,
+            "p99": 1029.119,
+            "p99_9": 1191.935,
+            "max": 1212.415
+          },
+          "send_lag_ms": {
+            "count": 10000,
+            "mean": 0.9834498999999994,
+            "p50": 0.279,
+            "p90": 2.349,
+            "p99": 10.751,
+            "p99_9": 39.039,
+            "max": 48.831
+          },
+          "inside_deadline": false,
+          "load_average_before": "79.17 39.32 22.39"
+        },
+        {
+          "rep": "rep2",
+          "achieved_rps": 499.9896158522292,
+          "sent": 10000,
+          "ok": 10000,
+          "errors": 0,
+          "timeouts": 0,
+          "non_2xx": 0,
+          "latency_ms": {
+            "count": 10000,
+            "mean": 3.3898834000000053,
+            "p50": 1.443,
+            "p90": 8.791,
+            "p99": 23.903,
+            "p99_9": 41.663,
+            "max": 64.223
+          },
+          "send_lag_ms": {
+            "count": 10000,
+            "mean": 0.7681259000000012,
+            "p50": 0.21,
+            "p90": 1.858,
+            "p99": 9.087,
+            "p99_9": 22.143,
+            "max": 31.455
           },
           "inside_deadline": true,
-          "load_average_before": "46.20 46.52 38.90"
+          "load_average_before": "122.43 92.71 52.23"
         }
+      ],
+      "1000": [
+        {
+          "rep": "rep1",
+          "achieved_rps": 999.9860640974073,
+          "sent": 20000,
+          "ok": 20000,
+          "errors": 0,
+          "timeouts": 0,
+          "non_2xx": 0,
+          "latency_ms": {
+            "count": 20000,
+            "mean": 38.744580549999995,
+            "p50": 1.772,
+            "p90": 44.927,
+            "p99": 766.975,
+            "p99_9": 889.855,
+            "max": 923.135
+          },
+          "send_lag_ms": {
+            "count": 20000,
+            "mean": 4.3659214500000045,
+            "p50": 0.19,
+            "p90": 3.583,
+            "p99": 121.855,
+            "p99_9": 206.335,
+            "max": 237.567
+          },
+          "inside_deadline": false,
+          "load_average_before": "77.75 42.28 23.95"
+        },
+        {
+          "rep": "rep2",
+          "achieved_rps": 1000.023084987127,
+          "sent": 20000,
+          "ok": 20000,
+          "errors": 0,
+          "timeouts": 0,
+          "non_2xx": 0,
+          "latency_ms": {
+            "count": 20000,
+            "mean": 3.5870699000000035,
+            "p50": 1.278,
+            "p90": 7.959,
+            "p99": 42.207,
+            "p99_9": 87.295,
+            "max": 106.559
+          },
+          "send_lag_ms": {
+            "count": 20000,
+            "mean": 0.8060935499999999,
+            "p50": 0.147,
+            "p90": 1.027,
+            "p99": 15.359,
+            "p99_9": 48.287,
+            "max": 64.543
+          },
+          "inside_deadline": true,
+          "load_average_before": "112.61 93.08 53.76"
+        }
+      ],
+      "_metrics": [
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.0458304e+07\nriskgate_velocity_keys 19420",
+        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 4.1886256e+07\nriskgate_velocity_keys 50698"
       ],
       "2000": [
         {
-          "rep": "rep1",
-          "achieved_rps": 2000.0317345968867,
-          "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 40000,
-            "mean": 1.3326185000000017,
-            "p50": 0.695,
-            "p90": 2.261,
-            "p99": 13.807,
-            "p99_9": 30.367,
-            "max": 87.167
-          },
-          "send_lag_ms": {
-            "count": 40000,
-            "mean": 0.22627680000000006,
-            "p50": 0.083,
-            "p90": 0.346,
-            "p99": 2.851,
-            "p99_9": 13.367,
-            "max": 24.399
-          },
-          "inside_deadline": true,
-          "load_average_before": "19.80 21.39 27.28"
-        },
-        {
           "rep": "rep2",
-          "achieved_rps": 2000.0003875097627,
+          "achieved_rps": 2000.0425727704978,
           "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
+          "ok": 39997,
+          "errors": 3,
           "timeouts": 0,
           "non_2xx": 0,
           "latency_ms": {
-            "count": 40000,
-            "mean": 14.537828499999977,
-            "p50": 3.285,
-            "p90": 44.191,
-            "p99": 138.879,
-            "p99_9": 222.719,
-            "max": 517.887
+            "count": 39997,
+            "mean": 659.8655381903646,
+            "p50": 5.747,
+            "p90": 2473.983,
+            "p99": 3454.975,
+            "p99_9": 4030.463,
+            "max": 4771.839
           },
           "send_lag_ms": {
             "count": 40000,
-            "mean": 1.339625224999998,
-            "p50": 0.222,
-            "p90": 2.331,
-            "p99": 23.999,
-            "p99_9": 49.119,
-            "max": 61.343
+            "mean": 49.9428324000001,
+            "p50": 0.264,
+            "p90": 199.679,
+            "p99": 460.287,
+            "p99_9": 621.567,
+            "max": 643.583
           },
           "inside_deadline": false,
-          "load_average_before": "45.26 46.32 39.09"
+          "load_average_before": "96.21 90.88 54.11"
         }
       ],
       "3000": [
         {
-          "rep": "rep1",
-          "achieved_rps": 3000.006562723735,
+          "rep": "rep2",
+          "achieved_rps": 2999.9887186043993,
           "sent": 60000,
           "ok": 60000,
           "errors": 0,
@@ -1840,59 +913,30 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 60000,
-            "mean": 1.4646811333333358,
-            "p50": 0.539,
-            "p90": 1.745,
-            "p99": 24.319,
-            "p99_9": 61.247,
-            "max": 102.143
+            "mean": 2.554305366666669,
+            "p50": 0.843,
+            "p90": 4.391,
+            "p99": 33.631,
+            "p99_9": 80.191,
+            "max": 195.711
           },
           "send_lag_ms": {
             "count": 60000,
-            "mean": 0.2412784666666668,
-            "p50": 0.069,
-            "p90": 0.265,
-            "p99": 2.561,
-            "p99_9": 26.639,
-            "max": 39.871
+            "mean": 0.3546830166666668,
+            "p50": 0.082,
+            "p90": 0.398,
+            "p99": 7.487,
+            "p99_9": 20.367,
+            "max": 28.959
           },
           "inside_deadline": true,
-          "load_average_before": "23.86 22.35 27.47"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 3000.0567457690854,
-          "sent": 60000,
-          "ok": 60000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 60000,
-            "mean": 49.44742300000016,
-            "p50": 3.523,
-            "p90": 192.511,
-            "p99": 548.351,
-            "p99_9": 936.959,
-            "max": 1153.023
-          },
-          "send_lag_ms": {
-            "count": 60000,
-            "mean": 3.737207100000004,
-            "p50": 0.178,
-            "p90": 4.635,
-            "p99": 80.767,
-            "p99_9": 162.047,
-            "max": 205.823
-          },
-          "inside_deadline": false,
-          "load_average_before": "47.96 46.88 39.50"
+          "load_average_before": "88.22 89.44 54.66"
         }
       ],
       "4000": [
         {
-          "rep": "rep1",
-          "achieved_rps": 3999.987758284443,
+          "rep": "rep2",
+          "achieved_rps": 4000.0358007679265,
           "sent": 80000,
           "ok": 80000,
           "errors": 0,
@@ -1900,30 +944,30 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 80000,
-            "mean": 4.357405512500009,
-            "p50": 0.888,
-            "p90": 7.599,
-            "p99": 72.511,
-            "p99_9": 149.247,
-            "max": 298.239
+            "mean": 5.559223574999994,
+            "p50": 0.956,
+            "p90": 13.495,
+            "p99": 83.391,
+            "p99_9": 176.127,
+            "max": 321.791
           },
           "send_lag_ms": {
             "count": 80000,
-            "mean": 0.4067609375000001,
-            "p50": 0.084,
-            "p90": 0.68,
-            "p99": 6.423,
-            "p99_9": 22.447,
-            "max": 33.919
+            "mean": 0.7557617125000001,
+            "p50": 0.076,
+            "p90": 0.741,
+            "p99": 17.279,
+            "p99_9": 30.751,
+            "max": 44.511
           },
           "inside_deadline": false,
-          "load_average_before": "22.00 22.02 27.20"
+          "load_average_before": "70.43 85.07 54.28"
         }
       ],
       "5000": [
         {
-          "rep": "rep1",
-          "achieved_rps": 4999.986124899753,
+          "rep": "rep2",
+          "achieved_rps": 5000.010823131659,
           "sent": 100000,
           "ok": 100000,
           "errors": 0,
@@ -1931,472 +975,30 @@
           "non_2xx": 0,
           "latency_ms": {
             "count": 100000,
-            "mean": 3.109344409999997,
-            "p50": 0.89,
-            "p90": 6.307,
-            "p99": 40.063,
-            "p99_9": 91.647,
-            "max": 257.663
+            "mean": 12.301286849999991,
+            "p50": 1.309,
+            "p90": 35.743,
+            "p99": 141.439,
+            "p99_9": 269.823,
+            "max": 359.423
           },
           "send_lag_ms": {
             "count": 100000,
-            "mean": 0.23581365999999976,
-            "p50": 0.066,
-            "p90": 0.53,
-            "p99": 3.075,
-            "p99_9": 7.143,
-            "max": 13.719
-          },
-          "inside_deadline": true,
-          "load_average_before": "26.66 22.93 27.33"
-        }
-      ],
-      "6000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 5375.95379213662,
-          "sent": 120000,
-          "ok": 116266,
-          "errors": 65,
-          "timeouts": 3669,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 119935,
-            "mean": 543.3652521032221,
-            "p50": 0.709,
-            "p90": 3143.679,
-            "p99": 5783.551,
-            "p99_9": 5906.431,
-            "max": 6053.887
-          },
-          "send_lag_ms": {
-            "count": 120000,
-            "mean": 100.61659143333333,
-            "p50": 0.066,
-            "p90": 397.567,
-            "p99": 2328.575,
-            "p99_9": 2361.343,
-            "max": 2400.255
+            "mean": 1.1767195000000013,
+            "p50": 0.07,
+            "p90": 1.517,
+            "p99": 24.447,
+            "p99_9": 78.911,
+            "max": 97.407
           },
           "inside_deadline": false,
-          "load_average_before": "32.01 24.46 27.76"
-        }
-      ],
-      "7000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 2879.3420129795577,
-          "sent": 140000,
-          "ok": 71129,
-          "errors": 12526,
-          "timeouts": 56345,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 127474,
-            "mean": 15176.882641236654,
-            "p50": 16031.743,
-            "p90": 29474.815,
-            "p99": 30867.455,
-            "p99_9": 31096.831,
-            "max": 31621.119
-          },
-          "send_lag_ms": {
-            "count": 140000,
-            "mean": 11884.960546442857,
-            "p50": 11255.807,
-            "p90": 24854.527,
-            "p99": 28639.231,
-            "p99_9": 28753.919,
-            "max": 28770.303
-          },
-          "inside_deadline": false,
-          "load_average_before": "39.29 26.81 28.48"
-        }
-      ],
-      "_metrics": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 6.4579504e+07\nriskgate_velocity_keys 50698",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8185067e+07\nriskgate_velocity_keys 43570"
-      ]
-    },
-    "sharded-64": {
-      "500": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 499.9975643683003,
-          "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 10000,
-            "mean": 9.184469399999998,
-            "p50": 2.359,
-            "p90": 14.879,
-            "p99": 134.911,
-            "p99_9": 249.215,
-            "max": 272.895
-          },
-          "send_lag_ms": {
-            "count": 10000,
-            "mean": 0.9716393999999996,
-            "p50": 0.341,
-            "p90": 2.217,
-            "p99": 9.351,
-            "p99_9": 29.247,
-            "max": 46.719
-          },
-          "inside_deadline": false,
-          "load_average_before": "46.56 34.93 31.55"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 500.00181581317497,
-          "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 10000,
-            "mean": 1.993765099999998,
-            "p50": 1.268,
-            "p90": 3.759,
-            "p99": 12.647,
-            "p99_9": 28.575,
-            "max": 77.823
-          },
-          "send_lag_ms": {
-            "count": 10000,
-            "mean": 0.44554950000000004,
-            "p50": 0.214,
-            "p90": 0.945,
-            "p99": 4.127,
-            "p99_9": 9.167,
-            "max": 14.047
-          },
-          "inside_deadline": true,
-          "load_average_before": "31.20 38.60 37.40"
-        }
-      ],
-      "1000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 999.9938393299187,
-          "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 20000,
-            "mean": 5.657254200000001,
-            "p50": 1.728,
-            "p90": 10.695,
-            "p99": 76.543,
-            "p99_9": 162.175,
-            "max": 233.983
-          },
-          "send_lag_ms": {
-            "count": 20000,
-            "mean": 0.8780436999999994,
-            "p50": 0.224,
-            "p90": 1.701,
-            "p99": 11.463,
-            "p99_9": 50.175,
-            "max": 68.159
-          },
-          "inside_deadline": false,
-          "load_average_before": "49.49 36.76 32.33"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 999.9934393150064,
-          "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 20000,
-            "mean": 2.1442544500000045,
-            "p50": 0.993,
-            "p90": 3.559,
-            "p99": 24.511,
-            "p99_9": 58.079,
-            "max": 106.559
-          },
-          "send_lag_ms": {
-            "count": 20000,
-            "mean": 0.4516900500000003,
-            "p50": 0.154,
-            "p90": 0.812,
-            "p99": 5.227,
-            "p99_9": 24.143,
-            "max": 35.743
-          },
-          "inside_deadline": true,
-          "load_average_before": "29.32 37.45 37.03"
-        }
-      ],
-      "_metrics": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 8.594003e+06\nriskgate_velocity_keys 19420",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.8185067e+07\nriskgate_velocity_keys 43570"
-      ],
-      "2000": [
-        {
-          "rep": "rep2",
-          "achieved_rps": 2000.281896773722,
-          "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 40000,
-            "mean": 6.505721749999999,
-            "p50": 1.79,
-            "p90": 13.095,
-            "p99": 84.927,
-            "p99_9": 177.663,
-            "max": 257.407
-          },
-          "send_lag_ms": {
-            "count": 40000,
-            "mean": 1.0285466749999999,
-            "p50": 0.195,
-            "p90": 1.719,
-            "p99": 21.167,
-            "p99_9": 47.071,
-            "max": 59.807
-          },
-          "inside_deadline": false,
-          "load_average_before": "31.48 37.24 36.96"
-        }
-      ],
-      "3000": [
-        {
-          "rep": "rep2",
-          "achieved_rps": 3001.100722103564,
-          "sent": 60000,
-          "ok": 60000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 60000,
-            "mean": 66.11391721666665,
-            "p50": 5.095,
-            "p90": 217.215,
-            "p99": 615.423,
-            "p99_9": 820.735,
-            "max": 1163.263
-          },
-          "send_lag_ms": {
-            "count": 60000,
-            "mean": 11.415370333333334,
-            "p50": 0.214,
-            "p90": 11.743,
-            "p99": 281.087,
-            "p99_9": 467.967,
-            "max": 490.239
-          },
-          "inside_deadline": false,
-          "load_average_before": "46.34 40.30 38.07"
-        }
-      ]
-    },
-    "syncmap": {
-      "500": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 500.00124177726144,
-          "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 10000,
-            "mean": 5.8935106000000115,
-            "p50": 2.411,
-            "p90": 11.311,
-            "p99": 68.031,
-            "p99_9": 115.391,
-            "max": 239.743
-          },
-          "send_lag_ms": {
-            "count": 10000,
-            "mean": 0.8555736999999992,
-            "p50": 0.352,
-            "p90": 1.724,
-            "p99": 7.795,
-            "p99_9": 28.383,
-            "max": 36.863
-          },
-          "inside_deadline": false,
-          "load_average_before": "66.19 47.21 37.11"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 500.01956209645437,
-          "sent": 10000,
-          "ok": 10000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 10000,
-            "mean": 1.5816462999999985,
-            "p50": 1.294,
-            "p90": 2.469,
-            "p99": 5.487,
-            "p99_9": 26.223,
-            "max": 38.271
-          },
-          "send_lag_ms": {
-            "count": 10000,
-            "mean": 0.3699927,
-            "p50": 0.279,
-            "p90": 0.636,
-            "p99": 1.906,
-            "p99_9": 8.767,
-            "max": 21.215
-          },
-          "inside_deadline": true,
-          "load_average_before": "62.10 45.59 40.27"
-        }
-      ],
-      "1000": [
-        {
-          "rep": "rep1",
-          "achieved_rps": 999.9863307533791,
-          "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 20000,
-            "mean": 6.224987749999991,
-            "p50": 2.395,
-            "p90": 13.647,
-            "p99": 67.135,
-            "p99_9": 117.503,
-            "max": 156.031
-          },
-          "send_lag_ms": {
-            "count": 20000,
-            "mean": 0.8572140500000013,
-            "p50": 0.285,
-            "p90": 1.808,
-            "p99": 10.919,
-            "p99_9": 27.839,
-            "max": 37.887
-          },
-          "inside_deadline": false,
-          "load_average_before": "65.23 48.62 37.96"
-        },
-        {
-          "rep": "rep2",
-          "achieved_rps": 1000.0063232561442,
-          "sent": 20000,
-          "ok": 20000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 20000,
-            "mean": 1.480705200000002,
-            "p50": 1.126,
-            "p90": 2.697,
-            "p99": 6.451,
-            "p99_9": 15.887,
-            "max": 29.903
-          },
-          "send_lag_ms": {
-            "count": 20000,
-            "mean": 0.32842710000000064,
-            "p50": 0.175,
-            "p90": 0.729,
-            "p99": 2.289,
-            "p99_9": 5.351,
-            "max": 9.991
-          },
-          "inside_deadline": true,
-          "load_average_before": "51.78 44.79 40.17"
-        }
-      ],
-      "_metrics": [
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 1.0458304e+07\nriskgate_velocity_keys 19420",
-        "riskgate_decision_log_dropped_total 0\nriskgate_velocity_bytes 2.2367806e+07\nriskgate_velocity_keys 43570"
-      ],
-      "2000": [
-        {
-          "rep": "rep2",
-          "achieved_rps": 1999.9998708967805,
-          "sent": 40000,
-          "ok": 40000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 40000,
-            "mean": 13.317381224999975,
-            "p50": 1.803,
-            "p90": 38.015,
-            "p99": 173.311,
-            "p99_9": 266.751,
-            "max": 389.375
-          },
-          "send_lag_ms": {
-            "count": 40000,
-            "mean": 1.6438200499999998,
-            "p50": 0.177,
-            "p90": 1.384,
-            "p99": 49.503,
-            "p99_9": 110.527,
-            "max": 123.775
-          },
-          "inside_deadline": false,
-          "load_average_before": "50.12 44.96 40.37"
-        }
-      ],
-      "3000": [
-        {
-          "rep": "rep2",
-          "achieved_rps": 2999.95407483762,
-          "sent": 60000,
-          "ok": 60000,
-          "errors": 0,
-          "timeouts": 0,
-          "non_2xx": 0,
-          "latency_ms": {
-            "count": 60000,
-            "mean": 21.849885183333363,
-            "p50": 3.205,
-            "p90": 72.831,
-            "p99": 214.143,
-            "p99_9": 314.111,
-            "max": 559.615
-          },
-          "send_lag_ms": {
-            "count": 60000,
-            "mean": 1.1718982666666684,
-            "p50": 0.143,
-            "p90": 1.498,
-            "p99": 24.639,
-            "p99_9": 79.871,
-            "max": 90.047
-          },
-          "inside_deadline": false,
-          "load_average_before": "59.44 47.35 41.35"
+          "load_average_before": "63.42 82.30 54.18"
         }
       ]
     }
   },
   "generator_lag_steps": {
-    "rate_steps": 58,
-    "send_lag_p99_over_1ms": 52
+    "rate_steps": 22,
+    "send_lag_p99_over_1ms": 22
   }
 }
