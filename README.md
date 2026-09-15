@@ -18,6 +18,7 @@ Measured on the IEEE-CIS data (real, anonymized Vesta e-commerce transactions) w
 | A naive last-30-days backtest against a 60-day maturity window (**simulated** dispute delays) | Fraud dollars understated by 80% to 88% naive, 4% to 6% matured | [Experiment 7](DESIGN.md#7-label-delay-simulated) |
 | Highest rate with p99 inside the deadline | Not yet quotable: the only run was on a heavily loaded machine. `scripts/experiments/exp5.sh` re-runs it | [Experiment 5](DESIGN.md#5-latency-under-load) |
 | Backtest of one proposed rule against the cached rule set, 590K rows | 0.58 ms (loaded machine; re-run before quoting) | [Experiment 6](DESIGN.md#6-backtest-speed) |
+| RiskGate killed mid-stream (Clearinghouse client, 200/s, 50 ms deadline) | Payments fail open for the outage plus the breaker's 2 s cool-down; restart from snapshot ready in 383 ms; client max latency 57 ms | [Experiment 9](DESIGN.md#9-the-risk-service-fails) |
 | Simulated dispute losses, no checks against model plus rules, through Clearinghouse | TBD (experiment 8) | [Experiment 8](DESIGN.md#8-end-to-end-through-clearinghouse) |
 
 The gain from velocity features is real and modest, and the absolute numbers are well below competition scores because the model sees only the fields a rule author can name. [Experiment 1](DESIGN.md#1-what-the-streaming-features-are-worth) explains why.
