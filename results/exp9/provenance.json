@@ -1,0 +1,11 @@
+{
+  "git_commit": "016337a08a24a46efad5e9b0f12fed570d6b39ca",
+  "date_utc": "2026-09-24T23:06:33Z",
+  "cpu": "Apple M3 Pro",
+  "performance_cores": "6",
+  "efficiency_cores": "6",
+  "go_version": "go1.26.5",
+  "gomaxprocs": 12,
+  "uptime": "16:06  up 16 mins, 9 users, load averages: 6.16 8.38 11.05",
+  "data": "IEEE-CIS Fraud Detection (real, Vesta via Kaggle), data/export_real/features.table"
+}

@@ -33,13 +33,13 @@ go build -o "$work/riskgate" "$root/cmd/riskgate"
 args="-model $root/models/ieee -rules $root/rules/default.rules -lists $root/rules/lists.json"
 args="$args -snapshot-dir $work/state -snapshot-interval $interval -decision-log off"
 
-# Restart-to-ready over a snapshot of the whole test month's velocity state.
+# Restart-to-ready over the warm snapshot (velocity state as of the start of
+# the test month, from scripts/experiments/exp8_warm.sh): copy it, start
+# RiskGate over it, and time until /healthz answers. The failure runs below
+# then start from the same state.
 port=18089
-"$work/riskgate" $args -addr "127.0.0.1:$port" -webhook-secrets "$secret" >"$work/warm.log" 2>&1 &
-pid=$!
-until curl -fsS "http://127.0.0.1:$port/healthz" >/dev/null 2>&1; do sleep 0.05; done
-go run "$root/cmd/serveparity" send -url "http://127.0.0.1:$port/v1/assess" -input "$replay" >/dev/null
-kill -TERM "$pid"; wait "$pid" || true # graceful: writes the final snapshot
+[ -f "$root/var/exp8_warm/riskgate.snap" ] || "$root/scripts/experiments/exp8_warm.sh"
+rm -rf "$work/state"; cp -R "$root/var/exp8_warm" "$work/state"
 snapshot_bytes=$(stat -f%z "$work/state/riskgate.snap")
 start=$(python3 -c 'import time; print(time.time())')
 "$work/riskgate" $args -addr "127.0.0.1:$port" -webhook-secrets "$secret" >"$work/restart.log" 2>&1 &
@@ -47,6 +47,7 @@ pid=$!
 until curl -fsS "http://127.0.0.1:$port/healthz" >/dev/null 2>&1; do sleep 0.005; done
 ready=$(python3 -c "import time; print(round((time.time()-$start)*1000, 1))")
 kill -TERM "$pid"; wait "$pid" || true
+rm -rf "$work/state"; cp -R "$root/var/exp8_warm" "$work/state"
 printf '{"snapshot_bytes": %s, "restart_to_ready_ms": %s, "snapshot_interval": "%s"}\n' \
   "$snapshot_bytes" "$ready" "$interval" >"$out/restart.json"
 
