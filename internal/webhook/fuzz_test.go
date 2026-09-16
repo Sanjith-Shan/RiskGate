@@ -48,7 +48,8 @@ func FuzzParseHeader(f *testing.F) {
 
 // FuzzVerify checks the sign/verify contract on arbitrary bodies and
 // secrets: a body verifies under the secret that signed it, and not after a
-// one-byte change.
+// one-byte change. An empty secret is refused outright, even for a header
+// it signed, because anyone can compute an HMAC under an empty key.
 func FuzzVerify(f *testing.F) {
 	f.Add([]byte(`{"id":"evt_1"}`), "whsec_a", int64(1767225600))
 	f.Add([]byte{}, "k", int64(0))
@@ -60,6 +61,12 @@ func FuzzVerify(f *testing.F) {
 		now := time.Unix(unix, 0)
 		v := NewVerifier(secret)
 		header := Sign(body, now, []byte(secret))
+		if secret == "" {
+			if err := v.VerifyAt(header, body, now); err == nil {
+				t.Fatal("header signed with an empty secret was accepted")
+			}
+			return
+		}
 		if err := v.VerifyAt(header, body, now); err != nil {
 			t.Fatalf("signed body rejected: %v", err)
 		}
