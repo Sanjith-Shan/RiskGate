@@ -1,0 +1,6 @@
+TransactionID,id_01,DeviceType,DeviceInfo,id_02
+100003,0.0,mobile,TestPhone X1 Build/TST001,1000.0
+100005,-5.0,desktop,DeskOS,
+100006,-20.0,mobile,,
+100009,,desktop,"Tablet Q7, rev 2",
+199999,,mobile,Orphan Device,
