@@ -1,7 +1,8 @@
 .venv/
-data/
+/data/
 *.test
 /bin/
 artifacts/
 __pycache__/
 *.prof
+/var/
