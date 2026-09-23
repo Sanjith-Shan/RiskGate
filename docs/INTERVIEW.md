@@ -49,17 +49,17 @@ This is also Radar's design, where the risk score is an attribute rules read. `r
 
 **Defending the order.** It makes rules composable. An allow rule wins over every block rule, present and future, without the author reading them, and adding a block rule can never un-block anything. The cost is that a careless allow rule lets fraud through, which is why the backtester reports overrides for allow rules (`Report.OverridesBlock`, `internal/backtest/report.go`).
 
-**Missing values** (`internal/rules/doc.go`).
-1. Any comparison or `in` with a missing value is false, including `!=`.
-2. Arithmetic with missing is missing, and so is division by zero.
-3. `is_missing(x)` is the explicit test.
-4. `and`, `or`, `not` are two-valued.
+**Missing values** (`internal/rules/doc.go`). Kleene three-valued logic, and a rule matches only when its condition is TRUE, the same as a SQL `WHERE`.
+1. A comparison, `in` or `starts_with` with a missing operand is UNKNOWN, including `!=`.
+2. `not UNKNOWN` is UNKNOWN. FALSE decides an `and`, TRUE decides an `or`.
+3. `is_missing(x)` is never UNKNOWN. It is how a rule asks for absent data.
+4. Arithmetic with missing is missing, and so is division by zero.
 
-The consequence is that `not :amount: > 100` is **true** for a missing amount while `:amount: <= 100` is false. The checker never rewrites one into the other.
+The consequence is that `not :amount: > 100` and `:amount: <= 100` agree: neither matches a missing amount.
 
-**Defending two-valued logic.** Boolean algebra keeps every law, De Morgan included, so analysts can rearrange rules safely. The vectorized evaluator needs one bitmap per node instead of two.
+**Defending it.** It matches Radar, whose docs say `NOT` over a comparison with a missing feature "always returns false", and it matches SQL, so neither analysts nor engineers are surprised. De Morgan still holds. What it gives up is the excluded middle: `x > 100 or not x > 100` skips a missing `x`.
 
-**Know this cold. Radar differs here.** Stripe's rules reference ("Missing attributes") says `NOT` with a comparison containing a missing feature "always returns false". So in Radar `not :amount: > 100` does not match a missing amount. RiskGate follows Radar for comparisons and deliberately departs for `not`. If asked, say it plainly. The benefit is the algebra and the single bitmap. The cost is surprising someone who learned Radar. The mitigation is the backtest, which shows those matches before a rule goes live, plus a planned linter warning (DESIGN.md, "What I would do next").
+**The story worth telling.** The first version was two-valued, and `not` flipped a missing comparison to true. Checking the docs against Radar found the mismatch. The fix switched both evaluators, the differential test showed they still agreed on every row, and a planted "two-valued `not`" bug was caught right away. Neither evaluator needs a third value at run time: each node answers "is it TRUE?" or "is it FALSE?", `not` switches the question, and missing answers no to both.
 
 ## 5. What a Pratt parser does with `a or b and c`
 
