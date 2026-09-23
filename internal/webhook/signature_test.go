@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -75,30 +76,28 @@ func TestErrorsIsMatchesByCode(t *testing.T) {
 
 func TestParseHeader(t *testing.T) {
 	sig := strings.Repeat("ab", 32)
-	h, err := ParseHeader("t=42, v0=zz ,v1=" + sig + ",v1=" + strings.ToUpper(sig))
+	h, err := ParseHeader("t=042, v0=zz ,v1=" + sig + ",v1=NOT-HEX")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if h.Timestamp != 42 || len(h.Signatures) != 2 || len(h.Signatures[0]) != 32 {
-		t.Fatalf("parsed %+v", h)
+	want := Header{Timestamp: 42, TimestampText: "042", Signatures: []string{sig, "NOT-HEX"}}
+	if h.Timestamp != want.Timestamp || h.TimestampText != want.TimestampText || !slices.Equal(h.Signatures, want.Signatures) {
+		t.Fatalf("parsed %+v, want %+v", h, want)
 	}
-	if h.Signatures[0][0] != 0xab || h.Signatures[1][0] != 0xab {
-		t.Fatal("hex decoded wrong")
+	if _, err := ParseHeader("t=999999999999999,v1=" + sig); err != nil {
+		t.Fatalf("15-digit t rejected: %v", err)
 	}
-	if _, err := ParseHeader("t=9223372036854775807,v1=" + sig); err != nil {
-		t.Fatalf("max int64 rejected: %v", err)
-	}
-	if _, err := ParseHeader("t=9223372036854775808,v1=" + sig); !errors.Is(err, ErrMalformedHeader) {
-		t.Fatalf("max int64 + 1: %v", err)
+	if _, err := ParseHeader("t=1000000000000000,v1=" + sig); !errors.Is(err, ErrMalformedHeader) {
+		t.Fatalf("16-digit t: %v", err)
 	}
 	if _, err := ParseHeader("t=0,v1=" + sig); err != nil {
-		t.Fatalf("t=0 is canonical: %v", err)
+		t.Fatalf("t=0: %v", err)
 	}
 }
 
 func TestTimestampFarFromNowDoesNotOverflow(t *testing.T) {
 	body := []byte("x")
-	ts := time.Unix(1<<62, 0)
+	ts := time.Unix(999_999_999_999_999, 0) // the largest t the grammar allows
 	header := Sign(body, ts, []byte("s"))
 	err := NewVerifier("s").VerifyAt(header, body, time.Unix(0, 0))
 	if !errors.Is(err, ErrTimestampOutsideTolerance) {

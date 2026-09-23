@@ -79,6 +79,11 @@ func runVectorFile(t *testing.T, path string) {
 			if v.Valid != (v.Error == nil) {
 				t.Fatalf("inconsistent vector: valid=%v error=%v", v.Valid, v.Error)
 			}
+			if v.Tolerance <= 0 {
+				// Clearinghouse reads 0 as "exactly now"; Verifier reads a
+				// zero Tolerance as the default. No shared vector uses 0.
+				t.Fatalf("tolerance %d is not supported by this runner", v.Tolerance)
+			}
 			verifier := NewVerifier(v.Secrets...)
 			verifier.Tolerance = time.Duration(v.Tolerance) * time.Second
 			err := verifier.VerifyAt(v.Header, []byte(v.Payload), time.Unix(v.Now, 0))
@@ -163,7 +168,8 @@ func generateVectors() []vector {
 		{"v1 before t", []string{primary}, payload, "v1=" + good + "," + ts, t0, 300, ok},
 		{"v0 scheme ignored", []string{primary}, payload, ts + ",v0=" + strings.Repeat("0", 64) + ",v1=" + good, t0, 300, ok},
 		{"unknown future scheme ignored even if not hex", []string{primary}, payload, ts + ",v1=" + good + ",v2=not-hex-at-all", t0, 300, ok},
-		{"uppercase hex accepted", []string{primary}, payload, ts + ",v1=" + strings.ToUpper(good), t0, 300, ok},
+		{"a junk v1 next to a good one is just a non-match", []string{primary}, payload, ts + ",v1=" + good + ",v1=xyz", t0, 300, ok},
+		{"leading-zero t signed as sent", []string{primary}, payload, "t=01767225600,v1=" + hmacHex(primary, "01767225600."+payload), t0, 300, ok},
 		{"spaces around items", []string{primary}, payload, " t=1767225600 , v1=" + good + " ", t0, 300, ok},
 		{"tab around items", []string{primary}, payload, "t=1767225600,\tv1=" + good, t0, 300, ok},
 		{"duplicate identical v1", []string{primary}, payload, ts + ",v1=" + good + ",v1=" + good, t0, 300, ok},
@@ -203,21 +209,27 @@ func generateVectors() []vector {
 		{"only v0", []string{primary}, payload, ts + ",v0=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"v1 key is case sensitive", []string{primary}, payload, ts + ",V1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"t key is case sensitive", []string{primary}, payload, "T=1767225600,v1=" + good, t0, 300, code(CodeMalformedHeader)},
-		{"v1 not hex", []string{primary}, payload, ts + ",v1=" + strings.Repeat("zz", 32), t0, 300, code(CodeMalformedHeader)},
-		{"v1 too short", []string{primary}, payload, ts + ",v1=" + good[:63], t0, 300, code(CodeMalformedHeader)},
-		{"v1 too long", []string{primary}, payload, ts + ",v1=" + good + "00", t0, 300, code(CodeMalformedHeader)},
+		{"v1 not hex", []string{primary}, payload, ts + ",v1=" + strings.Repeat("zz", 32), t0, 300, code(CodeNoMatchingSignature)},
+		{"v1 truncated", []string{primary}, payload, ts + ",v1=" + good[:63], t0, 300, code(CodeNoMatchingSignature)},
+		{"v1 too long", []string{primary}, payload, ts + ",v1=" + good + "00", t0, 300, code(CodeNoMatchingSignature)},
+		{"v1 containing equals sign", []string{primary}, payload, ts + ",v1=" + good + "=", t0, 300, code(CodeNoMatchingSignature)},
+		{"uppercase hex does not match", []string{primary}, payload, ts + ",v1=" + strings.ToUpper(good), t0, 300, code(CodeNoMatchingSignature)},
+		{"leading-zero t with signature over canonical t", []string{primary}, payload, "t=01767225600,v1=" + good, t0, 300, code(CodeNoMatchingSignature)},
 		{"v1 empty", []string{primary}, payload, ts + ",v1=", t0, 300, code(CodeMalformedHeader)},
-		{"one bad v1 poisons the header", []string{primary}, payload, ts + ",v1=" + good + ",v1=xyz", t0, 300, code(CodeMalformedHeader)},
+		{"empty v1 next to a valid one", []string{primary}, payload, ts + ",v1=" + good + ",v1=", t0, 300, code(CodeMalformedHeader)},
 		{"duplicate t, different values", []string{primary}, payload, ts + ",t=1767225601,v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"duplicate t, same value", []string{primary}, payload, ts + "," + ts + ",v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"t empty", []string{primary}, payload, "t=,v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"t not a number", []string{primary}, payload, "t=yesterday,v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"t negative", []string{primary}, payload, "t=-1767225600,v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"t with plus sign", []string{primary}, payload, "t=+1767225600,v1=" + good, t0, 300, code(CodeMalformedHeader)},
-		{"t with leading zero", []string{primary}, payload, "t=01767225600,v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"t fractional", []string{primary}, payload, "t=1767225600.5,v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"t in milliseconds does not match a seconds signature", []string{primary}, payload, "t=1767225600000,v1=" + good, t0, 300, code(CodeNoMatchingSignature)},
 		{"t overflows int64", []string{primary}, payload, "t=99999999999999999999,v1=" + good, t0, 300, code(CodeMalformedHeader)},
+		{"t with 16 digits", []string{primary}, payload, "t=1000000000000000,v1=" + hmacHex(primary, "1000000000000000."+payload), t0, 300, code(CodeMalformedHeader)},
+		{"t with 15 digits parses, then fails tolerance", []string{primary}, payload, "t=999999999999999,v1=" + hmacHex(primary, "999999999999999."+payload), t0, 300, code(CodeTimestampOutsideTolerance)},
+		{"empty element", []string{primary}, payload, ts + ",,v1=" + good, t0, 300, code(CodeMalformedHeader)},
+		{"t containing equals sign", []string{primary}, payload, "t=1767225600=1,v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"space around equals", []string{primary}, payload, "t = 1767225600,v1=" + good, t0, 300, code(CodeMalformedHeader)},
 		{"item without equals", []string{primary}, payload, ts + ",v1=" + good + ",garbage", t0, 300, code(CodeMalformedHeader)},
 		{"empty key", []string{primary}, payload, ts + ",=abc,v1=" + good, t0, 300, code(CodeMalformedHeader)},
@@ -236,10 +248,10 @@ func generateVectors() []vector {
 	return out
 }
 
-// hmacHex is HMAC-SHA256 over the body alone, the classic mistake of
-// forgetting the timestamp prefix.
-func hmacHex(secret, body string) string {
+// hmacHex is lowercase hex HMAC-SHA256 of msg, computed without Sign so
+// vectors can sign arbitrary text (a non-canonical t, or the body alone).
+func hmacHex(secret, msg string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(body))
+	mac.Write([]byte(msg))
 	return hex.EncodeToString(mac.Sum(nil))
 }

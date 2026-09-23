@@ -1,0 +1,628 @@
+[
+  {
+    "name": "valid_single_secret",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "valid_rotation_verifier_holds_old_only",
+    "secrets": [
+      "whsec_test_rotation_old_secret_aaaaaaaa"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=922945d07af5efc927c0f5530dea67a51334c550bcdc21b00878a2e6da4d6e9e,v1=adc0052fabed9e0420240c6694238c7face16a9aa31079c955a867ce048b7abd",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "valid_rotation_verifier_holds_new_only",
+    "secrets": [
+      "whsec_test_rotation_new_secret_bbbbbbbb"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=922945d07af5efc927c0f5530dea67a51334c550bcdc21b00878a2e6da4d6e9e,v1=adc0052fabed9e0420240c6694238c7face16a9aa31079c955a867ce048b7abd",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "valid_rotation_verifier_holds_both",
+    "secrets": [
+      "whsec_test_rotation_old_secret_aaaaaaaa",
+      "whsec_test_rotation_new_secret_bbbbbbbb"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=922945d07af5efc927c0f5530dea67a51334c550bcdc21b00878a2e6da4d6e9e,v1=adc0052fabed9e0420240c6694238c7face16a9aa31079c955a867ce048b7abd",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "valid_verifier_holds_two_header_signed_with_one",
+    "secrets": [
+      "whsec_test_rotation_old_secret_aaaaaaaa",
+      "whsec_test_rotation_new_secret_bbbbbbbb"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=922945d07af5efc927c0f5530dea67a51334c550bcdc21b00878a2e6da4d6e9e",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "valid_one_good_v1_among_bad_ones",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=0000000000000000000000000000000000000000000000000000000000000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da,v1=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "wrong_secret",
+    "secrets": [
+      "whsec_test_not_the_right_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "rotation_verifier_holds_neither",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=922945d07af5efc927c0f5530dea67a51334c550bcdc21b00878a2e6da4d6e9e,v1=adc0052fabed9e0420240c6694238c7face16a9aa31079c955a867ce048b7abd",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "tampered_payload_one_byte",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1001,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "tampered_timestamp_same_v1",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000001,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "uppercase_hex_does_not_match",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73C12667FF0445EC4D478AA5851A10463A1A2B01248DC68EAC5F1CC63E1C58DA",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "v1_not_hex",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=zzc12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "v1_truncated",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58d",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "v1_with_extra_char",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da0",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "signature_is_checked_before_timestamp",
+    "secrets": [
+      "whsec_test_not_the_right_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1699996400,v1=2bf88069008e71f1770339752e569d55a6a668b85f7117c56bb473bcadc45634",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "v1_containing_equals_sign",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da=",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "v0_matching_is_not_enough",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v0=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da,v1=0000000000000000000000000000000000000000000000000000000000000000",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "timestamp_too_old",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1699999699,v1=901cd60b7c83f2e04efdc012825872f2bd2a27f5d58648babcfa5cc50feee9d2",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "timestamp_too_far_in_future",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000301,v1=855ed3ac7bbd4d71bbe2773c175859cc612ec24fab80efc87c3912f5bc8e6717",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "timestamp_exactly_tolerance_old_accepted",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1699999700,v1=acbcbcf741f45d948e526804e9f2a4f645db8866a79a1c676a387f44d9971420",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "timestamp_exactly_tolerance_ahead_accepted",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000300,v1=723fecd83b09ea7d8d8595414294b956262ee90f5f7f3f9eed86ebd56b17e912",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "timestamp_zero",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=0,v1=17c32c77180c143675afb2ed5db1dfa216188bfec708e34bf36f872a8a6b1819",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "timestamp_with_leading_zeros_is_signed_as_sent",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=01700000000,v1=f09f207492d3b835e43480a03a3415d0c5bf5f75940c3ac0d5ae982526b03860",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "malformed_empty",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_whitespace_only",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "   ",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_garbage",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "this is not a signature header",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_no_timestamp",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_no_v1",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_only_unknown_scheme",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v0=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_timestamp_not_a_number",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=abc,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_timestamp_empty",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_timestamp_negative",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=-1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_timestamp_plus_sign",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=+1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_timestamp_fractional",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000.5,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_timestamp_too_many_digits",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=9999999999999999,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_timestamp_containing_equals_sign",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000=1,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_duplicate_timestamp",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_empty_v1",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_empty_v1_next_to_valid_one",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da,v1=",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_trailing_comma",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da,",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_empty_element",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_element_without_equals",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da,garbage",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_element_with_empty_key",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_scheme_names_are_case_sensitive",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "T=1700000000,V1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed_semicolon_separated",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000;v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "unknown_scheme_v0_ignored",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da,v0=6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "unknown_scheme_first_and_order_independent",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "v2=abc,v1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da,t=1700000000",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "whitespace_around_elements",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": " t=1700000000 ,\tv1=73c12667ff0445ec4d478aa5851a10463a1a2b01248dc68eac5f1cc63e1c58da\t",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "unicode_payload",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"description\":\"café 東京 💳\"}",
+    "header": "t=1700000000,v1=5bd95f737909e532d38b8ed52e07fd42ac7fe909a6030508e5927f809122c609",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "payload_with_trailing_newline",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}\n",
+    "header": "t=1700000000,v1=b9dbde7dcccf5137b7482cb378fd2c99166d5f9270521e25c118b6dcbbe255ef",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "trailing_newline_stripped_by_receiver",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "{\"id\":\"evt_1\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1700000000,\"api_version\":\"2026-09-01\",\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"amount\":1000,\"currency\":\"usd\"}}}",
+    "header": "t=1700000000,v1=b9dbde7dcccf5137b7482cb378fd2c99166d5f9270521e25c118b6dcbbe255ef",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "empty_payload",
+    "secrets": [
+      "whsec_test_clearinghouse_single_secret"
+    ],
+    "payload": "",
+    "header": "t=1700000000,v1=967d515330e38a2080c35f31810e347f9afe81d42086dd6cb94119a177ca0a8c",
+    "now": 1700000000,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  }
+]
