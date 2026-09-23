@@ -1,0 +1,4 @@
+error at line 1, column 11:
+review if :card_network: < "visa"
+          ^^^^^^^^^^^^^^^^^^^^^^^
+< only compares numbers, and :card_network: is text. Text can be compared with = and !=, or tested with starts_with.

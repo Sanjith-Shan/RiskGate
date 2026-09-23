@@ -1,0 +1,4 @@
+error at line 1, column 20:
+block if :amount: >
+                   ^
+the rule ends right after >. Add a value after >.

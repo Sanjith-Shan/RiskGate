@@ -1,0 +1,4 @@
+error at line 1, column 37:
+block if :purchaser_email_domain: = "anonymous.com
+                                    ^^^^^^^^^^^^^^
+this text is missing its closing quote. Add a closing " at the end of the text.

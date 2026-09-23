@@ -1,0 +1,4 @@
+error at line 1, column 29:
+block if :amount: > 100 and :risk_score:
+                            ^^^^^^^^^^^^
+and joins two conditions, but :risk_score: is a number. Compare it with a value, for example :risk_score: > 100.

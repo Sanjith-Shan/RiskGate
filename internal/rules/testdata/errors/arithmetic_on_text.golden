@@ -1,0 +1,4 @@
+error at line 1, column 10:
+block if :purchaser_email_domain: + 1 > 2
+         ^^^^^^^^^^^^^^^^^^^^^^^^
++ works on numbers, but :purchaser_email_domain: is a string.

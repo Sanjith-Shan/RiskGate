@@ -1,0 +1,4 @@
+error at line 1, column 16:
+block if lower(:amount:) = "1"
+               ^^^^^^^^
+lower works on text, but :amount: is a number.

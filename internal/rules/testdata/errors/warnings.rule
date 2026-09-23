@@ -1,0 +1,6 @@
+block if :amount: > 500 and :amount: < 100
+review if :card_type: = "debit" and :card_type: = "credit"
+block if 1 < 2
+block if :risk_score: >= 85
+block  if  (:risk_score: >= 85)
+review if :amount: != 5 and :amount: = 5

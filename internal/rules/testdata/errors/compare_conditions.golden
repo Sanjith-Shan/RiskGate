@@ -1,0 +1,4 @@
+error at line 1, column 11:
+block if (:amount: > 1) = true
+          ^^^^^^^^^^^^
+= compares values, but :amount: > 1 is already a true/false condition. Use the condition on its own, or not for its opposite.

@@ -1,0 +1,4 @@
+error at line 1, column 36:
+block if :billing_region: in [123, "204"]
+                                   ^^^^^
+a list cannot mix text and numbers. Use all text in quotes or all plain numbers.

@@ -1,0 +1,4 @@
+error at line 1, column 25:
+block if 100 < :amount: < 500
+                        ^
+comparisons cannot be chained. Join separate comparisons with and, like :a: > 1 and :a: < 5.

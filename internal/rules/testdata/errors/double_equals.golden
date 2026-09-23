@@ -1,0 +1,4 @@
+error at line 1, column 23:
+block if :risk_score: == 99
+                      ^^
+== is not an operator in rules. Write a single = instead.

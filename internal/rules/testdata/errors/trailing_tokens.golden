@@ -1,0 +1,4 @@
+error at line 1, column 25:
+block if :amount: > 100 :risk_score: > 50
+                        ^^^^^^^^^^^^
+expected and, or, or the end of the rule, but found :risk_score:. Join conditions with and or or.

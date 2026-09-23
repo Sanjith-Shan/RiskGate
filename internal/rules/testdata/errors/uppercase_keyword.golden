@@ -1,0 +1,4 @@
+error at line 1, column 23:
+block if :amount: > 1 AND :risk_score: > 2
+                      ^^^
+unexpected AND. Keywords are lowercase: write and.
