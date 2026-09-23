@@ -65,11 +65,24 @@ func NewRuleSet(version uint64, rules []*CompiledRule) *RuleSet {
 // decision (a shadow block under a live allow would not) is the caller's
 // call, since it depends on what the shadow rule is meant to replace.
 func (s *RuleSet) Evaluate(row schema.Row) Decision {
+	return s.EvaluateAppend(row, nil)
+}
+
+// EvaluateAppend is Evaluate with the matching shadow rules appended to
+// buf[:0], so a caller that reuses buf between payments allocates nothing
+// even when shadow rules match. Decision.Shadow aliases buf.
+func (s *RuleSet) EvaluateAppend(row schema.Row, buf []*CompiledRule) Decision {
 	d := Decision{Action: Allow, Version: s.Version}
+	if buf != nil {
+		d.Shadow = buf[:0]
+	}
 	for _, r := range s.shadow {
 		if r.match(row) {
 			d.Shadow = append(d.Shadow, r)
 		}
+	}
+	if len(d.Shadow) == 0 {
+		d.Shadow = nil // as documented: nil when no shadow rule matched
 	}
 	for _, group := range [3][]*CompiledRule{s.allow, s.block, s.review} {
 		for _, r := range group {

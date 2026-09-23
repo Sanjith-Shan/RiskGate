@@ -17,6 +17,26 @@ Each has a regression test and, where the fuzzer found it, a seed in
 
 Machine: Apple M3 Pro, 12 cores, Go 1.26.5, 2026-09-23.
 
+## Semantics change: three-valued logic (2026-09-23)
+
+Conditions now use Kleene's three-valued logic, collapsed to "matches only
+if TRUE", to match Radar's documented treatment of `not` over missing
+values (see `doc.go`). The closure compiler answers "is it TRUE?" or "is it
+FALSE?" for each node, and `not` switches the question. The reference
+interpreter in `compile_test.go` was rewritten as a separate check: it
+carries an explicit third value through Kleene's tables. The change turned
+up no bugs. Harness runs after it:
+
+- `FuzzParse`: 30s, 3.16M execs.
+- `FuzzGeneratedRoundTrip`: 30s, 0.90M execs.
+- `FuzzLower`: 30s, 2.47M execs.
+- All three used `-fuzzminimizetime 2s`, and none found a failure.
+
+A planted bug made `not` two-valued again (`!TRUE(x)` in place of
+`FALSE(x)`). Three tests caught it: `TestMissingSemantics`,
+`TestEvaluate` and `TestCompiledMatchesReference`. `FuzzGeneratedRoundTrip`
+caught it in under a second. The bug was then reverted.
+
 ## 1. Checking was quadratic in nesting depth
 
 - **Found by:** `FuzzParse`. Throughput fell to 0 execs/s and the run

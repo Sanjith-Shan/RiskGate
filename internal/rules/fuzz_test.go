@@ -52,7 +52,7 @@ func FuzzParse(f *testing.F) {
 		}
 		rs.Evaluate(row)
 		for _, cr := range rs.Rules {
-			if got, want := cr.Match(row), refEval(cr.Rule.Cond, row).b; got != want {
+			if got, want := cr.Match(row), refMatch(cr.Rule.Cond, row); got != want {
 				t.Fatalf("%s: compiled %v, reference %v", cr.Text, got, want)
 			}
 		}
@@ -78,7 +78,7 @@ func FuzzGeneratedRoundTrip(f *testing.F) {
 		}
 		for range 8 {
 			row := GenerateRow(rng, env.Catalog)
-			if got, want := cr.Match(row), refEval(r.Cond, row).b; got != want {
+			if got, want := cr.Match(row), refMatch(r.Cond, row); got != want {
 				t.Fatalf("%s: compiled %v, reference %v on num %v str %q", r, got, want, row.Num, row.Str)
 			}
 		}

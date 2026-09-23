@@ -30,40 +30,44 @@
 // # Missing values
 //
 // Much of the data is null, so missing is a first-class value: NaN for a
-// number and "" for text (see schema.Row). The rules are:
+// number and "" for text (see schema.Row). Conditions are evaluated in
+// Kleene's three-valued logic, TRUE, FALSE or UNKNOWN, and a rule matches
+// only when its condition is TRUE. That is exactly how SQL evaluates a
+// WHERE clause, and it matches Stripe's documentation for Radar, which says
+// that a comparison involving a missing value, and not over one, is false.
 //
-//  1. Any comparison or in involving a missing value is false. That
-//     includes != : "missing != 5" is false, not true.
-//  2. Arithmetic with a missing operand is missing, and so is division by
-//     zero.
-//  3. lower(missing) is missing; starts_with with either side missing is
-//     false; is_missing(x) is true exactly when x is missing.
-//  4. and, or and not are ordinary two-valued logic over the results.
+//  1. A comparison, in, or starts_with with a missing operand is UNKNOWN.
+//     That includes != : "missing != 5" is UNKNOWN, so it never matches.
+//  2. is_missing(x) is TRUE when x is missing and FALSE otherwise, never
+//     UNKNOWN. It is how a rule says what it wants done with absent data.
+//  3. not UNKNOWN is UNKNOWN. FALSE and anything is FALSE, TRUE or anything
+//     is TRUE, and every other and/or involving UNKNOWN is UNKNOWN.
+//  4. Arithmetic with a missing operand is missing, and so is division by
+//     zero; lower(missing) is missing.
 //
-// The consequence to know is rule 4 meeting rule 1: not flips a comparison
-// that was false because of a missing value into true. With :amount:
-// missing, `not :amount: > 100` is true while `:amount: <= 100` is false:
+// With :amount: missing, a comparison never matches, whichever way it is
+// written:
 //
 //	:amount:   :amount: > 100   not :amount: > 100   :amount: <= 100   is_missing(:amount:)
-//	150        true             false                false             false
-//	50         false            true                 true              false
-//	missing    false            true                 false             true
+//	150        TRUE             FALSE                FALSE             FALSE
+//	50         FALSE            TRUE                 TRUE              FALSE
+//	missing    UNKNOWN          UNKNOWN              UNKNOWN           TRUE
 //
-// Likewise `not :x: = "a"` matches a missing :x:, while `:x: != "a"` does
-// not. So a rule matches a payment with a missing field only when its author
-// wrote not, or is_missing, which is the point: comparisons never match
-// absent data by accident, and a rule that wants to catch absent data says
-// so.
+// So `not (x > 100)` and `x <= 100` agree on every row, and so do
+// `not (x = "a")` and `x != "a"`. A rule matches a payment with a missing
+// field only through is_missing, or through an or whose other side is TRUE.
+// To include missing values in an exclusion, the author says so:
+// `not :amount: > 100 or is_missing(:amount:)`.
 //
-// The alternative, SQL-style three-valued logic, would make `not` of an
-// unknown comparison also unknown, so neither `x > 100` nor `not x > 100`
-// would ever match a missing x. That surprises analysts writing exclusions
-// ("block unless the score is high" would silently skip every unscored
-// payment), and it needs two bitmaps per node in a vectorized evaluator
-// where two-valued logic needs one. With two values, and/or/not keep every
-// law of Boolean algebra (De Morgan included); what does not hold is
-// `not (a < b)` == `a >= b`, which the table above shows and which is why
-// the checker never rewrites one into the other.
+// Why not two-valued logic, where a comparison with missing is simply false
+// and not flips it to true? It is simpler to implement, but it makes
+// `not (x > 100)` match every payment with no amount while `x <= 100`
+// matches none. An analyst reading the rule cannot see that difference, and
+// Radar's documented behavior is the opposite, so a rule tested against one
+// and run on the other would silently disagree. Three-valued logic keeps
+// the negated and the rewritten forms equal, matches Radar and SQL, and
+// still obeys De Morgan's laws. What it gives up is the law of the excluded
+// middle: `x > 100 or not x > 100` does not match a missing x.
 //
 // # For other evaluators
 //
@@ -73,4 +77,9 @@
 // list, and Type the static type of any node. lower is strings.ToLower. The
 // semantics above are the whole contract; GenerateExpr and GenerateRow
 // produce inputs for checking one evaluator against the other.
+//
+// An evaluator does not need a third value at run time. Asking of each node
+// either "is it TRUE?" or "is it FALSE?", with not switching the question
+// and a missing operand answering no to both, is Kleene logic exactly;
+// compileBool describes the rules.
 package rules
