@@ -18,8 +18,9 @@ import (
 //
 // Lint is deliberately shallow: it reasons only about a bare attribute
 // compared with a constant inside one and-chain, so it has no false
-// positives. Because any comparison with a missing value is false, a
-// contradiction found this way holds for missing values too.
+// positives. A comparison with a missing value is UNKNOWN, which makes the
+// and-chain UNKNOWN or FALSE, never TRUE, so a contradiction found this
+// way holds for missing values too.
 func Lint(rules []*Rule) Diagnostics {
 	var ds Diagnostics
 	seen := make(map[string]*Rule)
@@ -60,7 +61,7 @@ func constantCondition(e Expr) (v, ok bool) {
 			v, ok = false, false
 		}
 	}()
-	b := compileBool(e)
+	b := compileBool(e, true)
 	return b.v, b.konst
 }
 

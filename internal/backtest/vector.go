@@ -37,7 +37,16 @@ import (
 //     code; per row it is one byte load. lower() maps the dictionary through
 //     strings.ToLower once. Two string columns compare through a shared
 //     numbering of their (possibly lowered) dictionary values.
-//   - condition: 64 rows per uint64 word; and/or/not are word operations.
+//   - condition: 64 rows per uint64 word; and/or are word operations.
+//
+// Conditions are three-valued (TRUE, FALSE, UNKNOWN; see rules/doc.go) but
+// no node carries two masks. Each node is compiled to answer one question,
+// "which rows is it TRUE on?" or "which rows is it FALSE on?", and not
+// switches the question for its operand instead of complementing a bitmap:
+// FALSE(x and y) = FALSE(x) or FALSE(y), FALSE(a < b) = present and a >= b,
+// and a missing operand is in neither mask. The rule's match mask is the
+// root's TRUE mask. This is the same scheme as rules.compileBool, derived
+// separately from the same truth tables.
 
 // chunkRows is the number of rows evaluated per step. It must be a multiple
 // of 64.
@@ -66,7 +75,7 @@ func CompileVector(e rules.Expr, t *Table) (p *Program, err error) {
 		}
 	}()
 	c := &compiler{t: t}
-	b := c.cond(e)
+	b := c.cond(e, true)
 	return &Program{t: t, root: b.node(), nf: c.nf, nw: c.nw}, nil
 }
 
@@ -256,8 +265,9 @@ func arith(op rules.Op, a, b float64) float64 {
 	return 0
 }
 
-// compare is one comparison with the rule language's semantics: false when
-// either side is missing, including for !=.
+// compare reports whether a op b holds with both sides present: false when
+// either side is missing, including for !=. It answers both questions of a
+// comparison, because FALSE(a op b) is compare(negate(op), a, b).
 func compare(op rules.Op, a, b float64) bool {
 	switch op {
 	case rules.OpEq:
@@ -352,63 +362,90 @@ func (b boolC) node() boolNode {
 
 func konst(v bool) boolC { return boolC{konst: true, v: v} }
 
-func (c *compiler) cond(e rules.Expr) boolC {
+// cond compiles e to the mask of rows where e is TRUE (want) or where it
+// is FALSE (!want).
+func (c *compiler) cond(e rules.Expr, want bool) boolC {
 	switch e := e.(type) {
 	case *rules.BoolLit:
-		return konst(e.Value)
+		return konst(e.Value == want)
 	case *rules.Unary:
 		if e.Op != rules.OpNot {
 			fail("%s is not a condition", rules.Print(e))
 		}
-		x := c.cond(e.X)
-		if x.konst {
-			return konst(!x.v)
-		}
-		return boolC{n: notNode{x.n}}
+		// TRUE(not x) = FALSE(x). Complementing TRUE(x) would be two-valued
+		// logic, and wrong on every row where x is UNKNOWN.
+		return c.cond(e.X, !want)
 	case *rules.Binary:
 		switch {
 		case e.Op == rules.OpAnd || e.Op == rules.OpOr:
-			return c.logical(e.Op, c.cond(e.X), c.cond(e.Y))
+			or := e.Op == rules.OpOr
+			if !want {
+				or = !or // FALSE(x and y) = FALSE(x) or FALSE(y), and dually
+			}
+			return c.logical(or, c.cond(e.X, want), c.cond(e.Y, want))
 		case e.Op.IsComparison():
+			op := e.Op
+			if !want {
+				op = negate(op)
+			}
 			switch e.X.Type() {
 			case rules.TypeNumber:
-				return c.compareNum(e.Op, c.num(e.X), c.num(e.Y))
+				return c.compareNum(op, c.num(e.X), c.num(e.Y))
 			case rules.TypeString:
-				return c.compareStr(e.Op, c.str(e.X), c.str(e.Y))
+				return c.compareStr(op, c.str(e.X), c.str(e.Y))
 			}
 		}
 	case *rules.In:
 		switch e.Kind {
 		case schema.Number:
-			return c.inNum(c.num(e.X), e.Numbers)
+			return c.inNum(c.num(e.X), e.Numbers, want)
 		case schema.String:
-			return c.inStr(c.str(e.X), e.Strings)
+			return c.inStr(c.str(e.X), e.Strings, want)
 		}
 	case *rules.Call:
 		switch {
 		case e.Fn == rules.FuncIsMissing && len(e.Args) == 1:
-			return c.isMissing(e.Args[0])
+			return c.isMissing(e.Args[0], want)
 		case e.Fn == rules.FuncStartsWith && len(e.Args) == 2:
-			return c.startsWith(c.str(e.Args[0]), c.str(e.Args[1]))
+			return c.startsWith(c.str(e.Args[0]), c.str(e.Args[1]), want)
 		}
 	}
 	fail("%s is not a condition", rules.Print(e))
 	return boolC{}
 }
 
-// logical folds a constant operand away: with two-valued logic it either
-// decides the result or drops out.
-func (c *compiler) logical(op rules.Op, x, y boolC) boolC {
-	decisive := op == rules.OpOr
+// logical folds a constant operand away: it either decides the result or
+// drops out.
+func (c *compiler) logical(or bool, x, y boolC) boolC {
 	for _, pair := range [2][2]boolC{{x, y}, {y, x}} {
 		if k, other := pair[0], pair[1]; k.konst {
-			if k.v == decisive {
-				return konst(decisive)
+			if k.v == or {
+				return konst(or)
 			}
 			return other
 		}
 	}
-	return boolC{n: logicNode{or: op == rules.OpOr, x: x.n, y: y.n, buf: c.wbuf()}}
+	return boolC{n: logicNode{or: or, x: x.n, y: y.n, buf: c.wbuf()}}
+}
+
+// negate returns the comparison that holds exactly when op does not, for
+// two present operands.
+func negate(op rules.Op) rules.Op {
+	switch op {
+	case rules.OpEq:
+		return rules.OpNe
+	case rules.OpNe:
+		return rules.OpEq
+	case rules.OpLt:
+		return rules.OpGe
+	case rules.OpLe:
+		return rules.OpGt
+	case rules.OpGt:
+		return rules.OpLe
+	case rules.OpGe:
+		return rules.OpLt
+	}
+	return op
 }
 
 // flip mirrors a comparison so the constant can go on the right.
@@ -435,7 +472,7 @@ func (c *compiler) compareNum(op rules.Op, x, y numC) boolC {
 	}
 	if y.konst {
 		if math.IsNaN(y.v) {
-			return konst(false) // every comparison with missing is false
+			return konst(false) // UNKNOWN on every row: in neither mask
 		}
 		if !op.IsComparison() {
 			fail("unknown comparison %s", op)
@@ -448,6 +485,8 @@ func (c *compiler) compareNum(op rules.Op, x, y numC) boolC {
 	return boolC{n: cmpVV{op: op, x: x.n, y: y.n}}
 }
 
+// compareStr compiles = or != with both sides present; a missing side is in
+// neither mask.
 func (c *compiler) compareStr(op rules.Op, x, y strC) boolC {
 	if op != rules.OpEq && op != rules.OpNe {
 		fail("%s does not compare text", op)
@@ -488,14 +527,15 @@ func (c *compiler) compareStr(op rules.Op, x, y strC) boolC {
 	}}
 }
 
-func (c *compiler) inNum(x numC, set []float64) boolC {
+// inNum compiles "x present and its membership equals want".
+func (c *compiler) inNum(x numC, set []float64, want bool) boolC {
 	if !slices.IsSorted(set) {
 		fail("list values are not sorted (was the rule checked?)")
 	}
 	if x.konst {
-		return konst(containsNum(set, x.v))
+		return konst(!math.IsNaN(x.v) && containsNum(set, x.v) == want)
 	}
-	return boolC{n: inNumNode{x: x.n, set: set}}
+	return boolC{n: inNumNode{x: x.n, set: set, want: want}}
 }
 
 // containsNum reports whether v is in the sorted set. NaN is in no set:
@@ -506,8 +546,9 @@ func containsNum(set []float64, v float64) bool {
 	return i < len(set) && set[i] == v
 }
 
-func (c *compiler) inStr(x strC, set []string) boolC {
-	has := func(v string) bool { _, ok := slices.BinarySearch(set, v); return ok }
+// inStr compiles "x present and its membership equals want".
+func (c *compiler) inStr(x strC, set []string, want bool) boolC {
+	has := func(v string) bool { _, ok := slices.BinarySearch(set, v); return ok == want }
 	if !slices.IsSorted(set) {
 		fail("list values are not sorted (was the rule checked?)")
 	}
@@ -517,43 +558,48 @@ func (c *compiler) inStr(x strC, set []string) boolC {
 	return boolC{n: c.lut(x, has)}
 }
 
-func (c *compiler) isMissing(arg rules.Expr) boolC {
+// isMissing is never UNKNOWN: its FALSE mask is exactly the present rows.
+func (c *compiler) isMissing(arg rules.Expr, want bool) boolC {
 	switch arg.Type() {
 	case rules.TypeNumber:
 		x := c.num(arg)
 		if x.konst {
-			return konst(math.IsNaN(x.v))
+			return konst(math.IsNaN(x.v) == want)
 		}
-		return boolC{n: isNaNNode{x.n}}
+		return boolC{n: isNaNNode{x: x.n, want: want}}
 	case rules.TypeString:
 		x := c.str(arg)
 		if x.konst {
-			return konst(x.v == "")
+			return konst((x.v == "") == want)
 		}
+		// Not c.lut, which pins missing to 0: here missing is the answer.
 		tbl := make([]uint8, len(c.t.Dict[x.col]))
-		tbl[0] = 1
+		for code := range tbl {
+			tbl[code] = uint8(b2u((code == 0) == want))
+		}
 		return boolC{n: lutNode{codes: c.t.Str[x.col], lut: tbl}}
 	}
 	fail("is_missing of %s", rules.Print(arg))
 	return boolC{}
 }
 
-func (c *compiler) startsWith(x, p strC) boolC {
+// startsWith compiles "both sides present and the prefix test equals want".
+func (c *compiler) startsWith(x, p strC, want bool) boolC {
 	switch {
 	case x.konst && p.konst:
-		return konst(x.v != "" && p.v != "" && strings.HasPrefix(x.v, p.v))
+		return konst(x.v != "" && p.v != "" && strings.HasPrefix(x.v, p.v) == want)
 	case p.konst:
 		if p.v == "" {
 			return konst(false)
 		}
-		return boolC{n: c.lut(x, func(v string) bool { return strings.HasPrefix(v, p.v) })}
+		return boolC{n: c.lut(x, func(v string) bool { return strings.HasPrefix(v, p.v) == want })}
 	case x.konst:
 		if x.v == "" {
 			return konst(false)
 		}
-		return boolC{n: c.lut(p, func(v string) bool { return strings.HasPrefix(x.v, v) })}
+		return boolC{n: c.lut(p, func(v string) bool { return strings.HasPrefix(x.v, v) == want })}
 	}
-	return boolC{n: prefixPair{a: c.t.Str[x.col], va: c.view(x), b: c.t.Str[p.col], vb: c.view(p)}}
+	return boolC{n: prefixPair{a: c.t.Str[x.col], va: c.view(x), b: c.t.Str[p.col], vb: c.view(p), want: want}}
 }
 
 // lowered returns strings.ToLower of every entry of dictionary col, computed
