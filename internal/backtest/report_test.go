@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -371,4 +372,56 @@ func TestSweepNeedsRiskScore(t *testing.T) {
 	if _, err := b.Sweep(Options{To: 1}, false); err == nil {
 		t.Fatal("swept a catalog with no risk_score")
 	}
+}
+
+// TestRunReusesWindow checks that a Backtester reusing its last window gives
+// exactly the report a fresh one gives, whichever options change between
+// runs, including concurrent runs.
+func TestRunReusesWindow(t *testing.T) {
+	env := testEnv()
+	tbl := Synthetic(env.Catalog, SynthOptions{Rows: 3000, Seed: 31})
+	current := mustLoad(t, "block if :risk_score: >= 90\nreview if :amount: > 500")
+	proposed := mustRule(t, "block if :amount: > 200")
+	lo, hi := tbl.TimeSpan()
+	opts := []Options{
+		{Samples: 5},
+		{Samples: 2}, // same window, different sample count
+		{From: lo + (hi-lo)/2, Samples: 5},
+		{From: lo + (hi-lo)/2, Maturity: -1},
+		{Samples: 5},
+	}
+	shared, err := NewBacktester(tbl, current, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := func(b *Backtester, opt Options) string {
+		r, err := b.Run(proposed, opt)
+		if err != nil {
+			t.Error(err)
+			return ""
+		}
+		js, _ := json.Marshal(r)
+		return string(js)
+	}
+	want := make([]string, len(opts))
+	for i, opt := range opts {
+		fresh, err := NewBacktester(tbl, current, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want[i] = report(fresh, opt)
+		if got := report(shared, opt); got != want[i] {
+			t.Errorf("options %+v: reused window gives a different report", opt)
+		}
+	}
+	var wg sync.WaitGroup
+	for k := range 16 {
+		wg.Go(func() {
+			i := k % len(opts)
+			if report(shared, opts[i]) != want[i] {
+				t.Errorf("concurrent run %d differs", k)
+			}
+		})
+	}
+	wg.Wait()
 }

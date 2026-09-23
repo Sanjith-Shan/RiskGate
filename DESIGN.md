@@ -430,35 +430,47 @@ Context, said once. The competition's winning private-leaderboard AUC was 0.9458
 ### 2. Train/serve parity
 
 **Question.** Is the model in production the model that was evaluated?
-**Method.** Replay the test month through the HTTP service, capture every feature vector, and compare with the offline export row by row. Separately, compare Go raw scores with LightGBM's on every test-month row (`cmd/parity`).
-**Result.**
+**Method.** A fresh `riskgate serve` (models/ieee, `rules/default.rules`, exact state with 64 shards, no snapshot) received all 590,540 IEEE-CIS transactions over HTTP, one request at a time in (TransactionDT, TransactionID) order, so its velocity state saw the same history the offline export replayed. Labels were not sent. `cmd/serveparity compare` then checked every decision-log line three ways, comparing bits (`math.Float64bits`, with missing equal to missing): all 53 catalog features against a fresh offline `features.Replay`, the 53 encoded model inputs against `export.csv`, and the logged raw score, probability and `risk_score` against the offline Scorer. Separately, `python/parity.py` (which reads no labels) and `cmd/parity` compared Go raw scores with LightGBM's on every test-month row. `riskgate audit` replayed the decision log. As a negative control, a copy of the log with one amount moved by one ulp and one line deleted must fail the check, and it does (`scripts/experiments/exp2_negative_control.sh`). Run with `scripts/experiments/exp2.sh`. Results are in `results/exp2/`.
+**Result.** Apple M3 Pro, go1.26.5, 2026-09-23, on a shared machine with a load average of 12 to 21. Load affects only wall time, not these results.
 
 | Check | Rows compared | Rows that differ | Largest absolute difference |
 |---|---|---|---|
-| Service features against export | TBD (experiment 2) | TBD (experiment 2) | TBD (experiment 2) |
-| Go raw score against LightGBM | TBD (experiment 2) | TBD (experiment 2) | TBD (experiment 2) |
+| Service features against export, all months | 590,540 | 0 | 0 |
+| Service features against export, test month | 92,427 | 0 | 0 |
+| Service raw score against offline Scorer, all months | 590,540 | 0 | 0 |
+| Go raw score against LightGBM, test month (954 trees) | 92,427 | 0 (all 92,427 bit-identical) | 0 |
+| `riskgate audit` of the decision log | 590,540 | 0 | n/a |
+
+No mismatches, so no bugs to log (`results/exp2/BUGS.md`). The decision log dropped 0 records during the replay.
 
 ### 3. Two evaluators, one answer
 
 **Question.** Do the closure and vectorized evaluators agree on every rule and every row?
-**Method.** `backtest.DiffTest` over generated, grounded rules on the full table, plus the rule-set level check, plus parser fuzzing.
+**Method.** `backtest difftest -rules 10000` on the real IEEE-CIS table, every row. Half the rules are generated as they come, half with constants drawn from the table. It ran twice: on the exported table (`risk_score` missing on every row) and on the same replay scored by the trained model. The rule-set level check (`backtest.CheckRuleSet`, action and deciding rule on every row) covers the 50-rule `RealisticRuleSet`, `rules/baseline.rules` and `rules/default.rules`, on both tables. Parser fuzzing is separate (see the bug log). Details are in `results/difftest_real/`.
 **Result.**
 
-| Rules generated | Rows per rule | Rule-row pairs checked | Disagreements | Bugs found |
-|---|---|---|---|---|
-| TBD (experiment 3) | TBD (experiment 3) | TBD (experiment 3) | TBD (experiment 3) | TBD (experiment 3) |
+| Table | Rules generated | Non-trivial rules | Rows per rule | Rule-row pairs checked | Disagreements | Bugs found |
+|---|---|---|---|---|---|---|
+| Exported (`risk_score` missing) | 10,000 | 5,576 | 590,540 | 5,905,400,000 | 0 | 0 |
+| Scored by the model | 10,000 | 5,676 | 590,540 | 5,905,400,000 | 0 | 0 |
+
+A non-trivial rule matches some rows but not all. The rest match none or all, which exercises missing values and little else. At the rule-set level, all three sets had 0 mismatches on all 590,540 rows of both tables.
 
 ### 4. Velocity state shootout
 
 **Question.** What does bounding memory cost in accuracy, speed, and fraud caught?
-**Method.** Exact, bucketed and sketch states. Memory and speed from benchmarks, error from `features.CompareStates`, and the effect on experiment 1's metrics by retraining on each state's export (`cmd/export -state`).
-**Result.**
+**Method.** `cmd/experiments/state` on the real IEEE-CIS data, all three states at default settings. Memory is each state's own estimate after a full replay, checked against the measured heap. Speed is ns per state operation over the data's own 1.7M keyed updates, on one goroutine, median of 7. Error comes from `features.CompareStates` against exact, on every row. For the model metrics, the model trained on exact-state features (`models/ieee`, not retrained) scores the validation month, each state computing the features through the same replay, stopped before the test month. That is what swapping the state under a deployed model would do. Details, per-family errors and the eviction numbers are in `results/state_shootout/`.
+**Result.** Apple M3 Pro, go1.26.5. **Timings were taken on a shared, heavily loaded machine (1-minute load average 12 to 40) and varied 30% between repetitions. Re-run on a quiet machine before quoting.**
 
 | State | Bytes per key | ns per update | ns per read | Features exact (share of rows) | Worst feature error | Fraud recall at 1% FPR |
 |---|---|---|---|---|---|---|
-| Exact | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) | 1 (reference) | 0 (reference) | TBD (experiment 4) |
-| Bucketed ring | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) |
-| Sketch | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) | TBD (experiment 4) |
+| Exact | 380 | 349 | about 0 beyond the update | 1 (reference) | 0 (reference) | 22.49% (ROC-AUC 0.8450, PR-AUC 0.2983) |
+| Bucketed ring | 613 | 320 | about 0 beyond the update | 76% of counts and sums, 45% of distinct counts, 100% of recency | sums over by up to $77,000 (one trailing bucket); counts never under | 22.49% (ROC-AUC 0.8450, PR-AUC 0.2982) |
+| Sketch | 64 MB fixed (1,331 per live key here) | 462 | about 940 | 62% of counts and sums, 2.5% of distinct counts, 88% of recency | recency: an unseen key read as seen on 392,560 feature values; `uid_seconds_since_first` exact on 23.5% of rows | 22.77% (ROC-AUC 0.8314, PR-AUC 0.2867) |
+
+"ns per read" is ReadAdd minus Add, because scoring always reads a key right after its previous update. For exact and bucketed the difference is inside the noise. At this data's scale the exact state is also the smallest: 48,245 live keys and 18 MB at the end, 28 MB at the peak. Idle-key eviction cuts exact from 74 MB to 18 MB and bucketed from 126 MB to 30 MB, with every feature bit-identical with and without it.
+
+The bucketed ring costs nothing measurable on the metrics. It changes a third of validation scores slightly, and ROC-AUC and PR-AUC move in the fifth decimal. The sketch costs 0.014 ROC-AUC and 0.012 PR-AUC. Its recall at 1% FPR is 8 frauds higher out of 2,850, which is noise at one operating point. The exact row reproduces `python/train.py`'s validation numbers for the same model to about 1e-13. The validation month was the model's early-stopping set, so the absolute values are optimistic for all three states alike.
 
 ### 5. Latency under load
 
@@ -477,26 +489,32 @@ Highest rate with p99 inside the deadline `TBD (experiment 5)`.
 ### 6. Backtest speed
 
 **Question.** Is a backtest fast enough that an analyst iterates?
-**Method.** `backtest.RunBench`. One rule and the 50-rule `RealisticRuleSet` over the full table, vectorized against row-at-a-time on the same cached features, one thread and `GOMAXPROCS`. Row-at-a-time gets a pre-built row store for free, which flatters it.
-**Result.**
+**Method.** `backtest bench` (`backtest.RunBench`). One rule and the 50-rule `RealisticRuleSet` over all 590,540 rows of the real table, scored by the trained model. Vectorized is compared with row-at-a-time on the same cached features, on one thread and on GOMAXPROCS=12. Row-at-a-time gets a row store built in advance for free, which flatters it. Vectorized also produces every rule's match bitmap, which the backtester needs for overlaps and row-at-a-time does not. The page's case is `Backtester.Run`, one proposed rule against the cached 50-rule baseline. Each case ran 9 times in each of 3 runs; the table gives the best time, and `results/backtest_speed/` has medians and the export-table runs. Every run checked that the two evaluators' decisions were identical on all rows.
+**Result.** Apple M3 Pro (6P+6E), go1.26.5, GOMAXPROCS=12. **The machine was shared and heavily loaded (1-minute load average 13 to 46), and identical code varied by up to 20% between runs. Re-run on a quiet machine before quoting.**
 
 | Workload | Evaluator | Threads | Best time | Rows per second |
 |---|---|---|---|---|
-| One rule | Vectorized | 1 / GOMAXPROCS | TBD (experiment 6) | TBD (experiment 6) |
-| One rule | Row-at-a-time | 1 / GOMAXPROCS | TBD (experiment 6) | TBD (experiment 6) |
-| 50-rule set | Vectorized | 1 / GOMAXPROCS | TBD (experiment 6) | TBD (experiment 6) |
-| 50-rule set | Row-at-a-time | 1 / GOMAXPROCS | TBD (experiment 6) | TBD (experiment 6) |
+| One rule | Vectorized | 1 / 12 | 1.83 ms / 0.47 ms | 323M / 1.26G |
+| One rule | Row-at-a-time | 1 / 12 | 29.1 ms / 9.37 ms | 20.3M / 63.0M |
+| 50-rule set | Vectorized | 1 / 12 | 32.6 ms / 4.83 ms | 18.1M / 122M |
+| 50-rule set | Row-at-a-time | 1 / 12 | 57.6 ms / 9.58 ms | 10.3M / 61.6M |
+| Page: one proposed rule against the cached baseline | Vectorized | 12 | 0.58 ms (3.6 ms the first time a period is used) | |
+
+At first the vectorized 50-rule set was only 1.6x faster than row-at-a-time on one thread (47.6 against 78 ms on the exported table). Timing each rule showed why: the three numeric `in` rules each cost several times as much as the other rules, because their kernel branched on the data. Three changes followed. Numeric `in` became branch-free (a word-at-a-time scan for up to 4 values, a collision-free hash table beyond that). Radar's order is now decided per chunk inside the parallel workers instead of in one sequential pass afterwards. The backtester keeps the last resolved backtest period instead of rebuilding it on every run. The 50-rule set went from 48.2 to 32.6 ms on one thread and from 8.1 to 4.8 ms on 12, and the page's run from 3.75 to 0.58 ms (scored table, best times). One tried idea did not pay off: skipping rows an earlier action already decided saved 3%, because about 22% of rows are still undecided after the block rules, which is too dense for row-at-a-time refinement to win. It was removed.
 
 ### 7. Label delay (simulated)
 
 **Question.** How far does a naive recent-window backtest understate a rule's fraud catch, and does the maturity window fix it?
 **Method.** Simulate a dispute arrival time for each fraud label from `DefaultDelay` (lognormal, median 30 days, sigma 0.5, capped at 120 days, an assumption and not a measurement). Compare a naive last-30-days backtest and a matured one against the truth (`Backtester.CompareLabelDelay`).
+"Today" is the end of the validation month, so the naive window is the validation month and the matured window (30 days ending 60 days earlier) falls in the training months. No test-month payment is used. Rule: `review if :product_code: = "C" and :amount: > 50`, from `rules/baseline.rules`, backtested with no rules in force on the real table. Three more rules, and the sensitivity to the assumed delay, are in `results/label_delay/`.
 **Result.** Every number here is SIMULATED.
 
 | Backtest | Fraud caught as reported | Fraud caught in truth | Understatement |
 |---|---|---|---|
-| Naive, last 30 days | TBD (experiment 7) | TBD (experiment 7) | TBD (experiment 7) |
-| Matured, 60-day maturity | TBD (experiment 7) | TBD (experiment 7) | TBD (experiment 7) |
+| Naive, last 30 days | 86 payments, $7,736 | 461 payments, $42,447 | 81.8% of fraud dollars |
+| Matured, 60-day maturity | 316 payments, $27,133 | 325 payments, $28,164 | 3.7% of fraud dollars |
+
+Across the four rules tried, the naive backtest understates fraud dollars caught by 80% to 88% and precision by a factor of 5 to 8. The 60-day window brings the understatement down to 4% to 6%. The size of the error depends on the assumption. With a 15-day median delay the naive understatement is 47%. With 45 days it is 95%, and 60 days of maturity still leaves 17%.
 
 ### 8. End to end through Clearinghouse
 

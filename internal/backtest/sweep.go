@@ -57,7 +57,7 @@ func (b *Backtester) Sweep(opt Options, givenCurrent bool) (*SweepResult, error)
 	if err != nil {
 		return nil, err
 	}
-	res := &SweepResult{GivenCurrent: givenCurrent, Period: b.outcome(w.counted, w)}
+	res := &SweepResult{GivenCurrent: givenCurrent, Period: w.period}
 	pop := w.counted
 	if givenCurrent {
 		res.Protected = b.counts(pop.Clone().And(b.Decisions.Allowed))

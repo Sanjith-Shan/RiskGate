@@ -3,10 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Sanjith-Shan/RiskGate/internal/backtest"
+	"github.com/Sanjith-Shan/RiskGate/internal/rules"
+	"github.com/Sanjith-Shan/RiskGate/internal/schema"
 )
 
 func runOK(t *testing.T, args ...string) string {
@@ -65,7 +70,7 @@ func TestSynthRunSweepLabelDelay(t *testing.T) {
 
 func TestBench(t *testing.T) {
 	out := runOK(t, "bench", "-rows", "3000", "-reps", "1")
-	for _, want := range []string{"machine:", "GOMAXPROCS=", "50-rule set", "row-at-a-time", "Backtester.Run", "indicative"} {
+	for _, want := range []string{"machine:", "GOMAXPROCS=", "50-rule set", "row-at-a-time", "Backtester.Run", "indicative", "agree on all 3,000 rows"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in\n%s", want, out)
 		}
@@ -108,5 +113,77 @@ func TestFormatting(t *testing.T) {
 	}
 	if !strings.Contains(machine(), "GOMAXPROCS") {
 		t.Error("machine")
+	}
+}
+
+func TestFlagAndRuleStats(t *testing.T) {
+	dir := t.TempDir()
+	table := filepath.Join(dir, "t.rgt")
+	runOK(t, "synth", "-out", table, "-rows", "20000")
+	set := filepath.Join(dir, "set.rules")
+	src := "allow if :amount: < 5\nblock if :amount: > 900\nreview if :risk_score: >= 80\nshadow block if :amount: > 1\n"
+	if err := os.WriteFile(set, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	csvPath := filepath.Join(dir, "flags.csv")
+	out := runOK(t, "flag", "-table", table, "-rules", set, "-out", csvPath)
+	if !strings.Contains(out, "20,000 rows") {
+		t.Errorf("flag output:\n%s", out)
+	}
+	b, err := os.ReadFile(csvPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	if lines[0] != "TransactionID,flagged" || len(lines) != 20001 {
+		t.Fatalf("csv header %q, %d lines", lines[0], len(lines))
+	}
+
+	// The CSV must agree with the rule set evaluated row by row: flagged
+	// exactly when the decision is block or review (shadow rules never count).
+	tbl, err := backtest.Load(table, schema.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rs, err := loadRules(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	flagged := 0
+	for i, d := range backtest.EvaluateRows(rs, tbl.Rows()) {
+		want := "0"
+		if d.Action == rules.Block || d.Action == rules.Review {
+			want = "1"
+			flagged++
+		}
+		if got := lines[i+1]; got != fmt.Sprintf("%d,%s", tbl.ID[i], want) {
+			t.Fatalf("row %d: %q, want flagged %s", i, got, want)
+		}
+	}
+
+	out = runOK(t, "rulestats", "-table", table, "-rules", set, "-split", "all", "-json")
+	var s SetStat
+	if err := json.Unmarshal([]byte(out[strings.Index(out, "{"):]), &s); err != nil {
+		t.Fatal(err)
+	}
+	if s.Rows != 20000 || s.Flagged != flagged || len(s.Rules) != 4 || s.Rules[3].Action != "shadow block" {
+		t.Errorf("rulestats: rows %d, flagged %d (want %d), %d rules", s.Rows, s.Flagged, flagged, len(s.Rules))
+	}
+	if s.Rules[3].Decided != 0 {
+		t.Error("a shadow rule decided payments")
+	}
+	out = runOK(t, "rulestats", "-table", table, "-rules", set, "-split", "valid")
+	if !strings.Contains(out, "split valid") {
+		t.Errorf("rulestats output:\n%s", out)
+	}
+	for _, args := range [][]string{
+		{"flag", "-table", table, "-rules", set},
+		{"rulestats", "-table", table},
+		{"rulestats", "-table", table, "-rules", set, "-split", "bogus"},
+	} {
+		var b bytes.Buffer
+		if err := run(args, &b); err == nil {
+			t.Errorf("%q: no error", args)
+		}
 	}
 }

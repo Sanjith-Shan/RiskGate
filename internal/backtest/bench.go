@@ -1,6 +1,7 @@
 package backtest
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 	"time"
@@ -98,4 +99,26 @@ func evaluateRowsParallel(rs *rules.RuleSet, rows []schema.Row, threads int) []r
 	}
 	wg.Wait()
 	return out
+}
+
+// CheckRuleSet evaluates rs over t both ways, EvaluateRuleSet and
+// RuleSet.Evaluate on every row (rows must be t.Rows()), and returns the
+// number of rows compared, or an error naming the first row where the
+// action or the deciding rule differs.
+func CheckRuleSet(rs *rules.RuleSet, t *Table, rows []schema.Row) (int, error) {
+	d, err := EvaluateRuleSet(rs, t, 0)
+	if err != nil {
+		return 0, err
+	}
+	for i, w := range EvaluateRows(rs, rows) {
+		wantRule := int32(-1)
+		if w.Rule != nil {
+			wantRule = int32(w.Rule.Index)
+		}
+		if d.Action[i] != w.Action || d.Rule[i] != wantRule {
+			return i, fmt.Errorf("backtest: row %d (id %d): vectorized %s by rule %d, row-at-a-time %s by rule %d",
+				i, t.ID[i], d.Action[i], d.Rule[i], w.Action, wantRule)
+		}
+	}
+	return t.N, nil
 }
