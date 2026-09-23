@@ -1,0 +1,4 @@
+error at line 1, column 10:
+block if (:amount: > 100 and :risk_score: > 50
+         ^
+this ( is never closed. Add a ) where the group ends.

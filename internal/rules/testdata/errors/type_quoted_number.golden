@@ -1,0 +1,4 @@
+error at line 1, column 21:
+block if :amount: > "300"
+                    ^^^^^
+:amount: is a number, and "300" is a string. Remove the quotes.

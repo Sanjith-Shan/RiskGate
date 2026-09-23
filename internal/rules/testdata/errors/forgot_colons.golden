@@ -1,0 +1,4 @@
+error at line 1, column 10:
+block if amount > 1000
+         ^^^^^^
+amount needs colons around it. Attributes are written between colons: :amount:.

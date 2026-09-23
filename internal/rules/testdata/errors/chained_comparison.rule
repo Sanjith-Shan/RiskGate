@@ -1,0 +1,1 @@
+block if 100 < :amount: < 500

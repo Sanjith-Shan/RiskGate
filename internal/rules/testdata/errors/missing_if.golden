@@ -1,0 +1,4 @@
+error at line 1, column 7:
+block :amount: > 1000
+      ^
+expected if after block, but found :amount:. Add if after block: block if <condition>.

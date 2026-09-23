@@ -1,0 +1,4 @@
+error at line 1, column 10:
+block if :risk_score:
+         ^^^^^^^^^^^^
+the condition must be true or false, but :risk_score: is a number. Compare it with a value, for example :risk_score: > 100.

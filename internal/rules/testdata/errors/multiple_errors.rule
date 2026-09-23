@@ -1,0 +1,7 @@
+# A rule set with several problems: all of them are reported.
+allow if :purchaser_email_domain: in @trusted_domains
+
+block if :card_txn_cnt_1h: >= 8
+review if :amount: > "300" and :devise_type: = "mobile"
+block if :risk_score: >= 85   # trailing comments are fine
+blok if :amount: > 5000

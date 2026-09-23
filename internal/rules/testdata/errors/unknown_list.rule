@@ -1,0 +1,1 @@
+allow if :purchaser_email_domain: in @trusted_domain
