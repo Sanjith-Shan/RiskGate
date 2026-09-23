@@ -1,0 +1,796 @@
+[
+  {
+    "name": "valid single v1",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "valid with clock slightly ahead",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225642,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "valid with clock slightly behind",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225558,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "rotation: two v1, verifier has new secret",
+    "secrets": [
+      "whsec_riskgate_rotated_8a4b7e"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=c33c4a1b77d05e61550707e70879ea13f615423bb34a89394f7e7924d6fafb14",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "rotation: two v1, verifier has old secret",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=c33c4a1b77d05e61550707e70879ea13f615423bb34a89394f7e7924d6fafb14",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "rotation: three v1, only last matches",
+    "secrets": [
+      "whsec_riskgate_rotated_8a4b7e"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=45e2a18b5961d2435af747a9b7ef55df0d91063cb200d1380f1a64b6ea1a08f6,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=c33c4a1b77d05e61550707e70879ea13f615423bb34a89394f7e7924d6fafb14",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "two secrets configured, header signed with first",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d",
+      "whsec_riskgate_rotated_8a4b7e"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "two secrets configured, header signed with second",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d",
+      "whsec_riskgate_rotated_8a4b7e"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=c33c4a1b77d05e61550707e70879ea13f615423bb34a89394f7e7924d6fafb14",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "v1 before t",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,t=1767225600",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "v0 scheme ignored",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v0=0000000000000000000000000000000000000000000000000000000000000000,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "unknown future scheme ignored even if not hex",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v2=not-hex-at-all",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "uppercase hex accepted",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=B1926CB11FCC219503F6F26DE23BD91AA13113DF33F218EA2C87990E2EFF612A",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "spaces around items",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": " t=1767225600 , v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a ",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "tab around items",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,\tv1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "duplicate identical v1",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "unicode body",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_unicode\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"pi_unicode\",\"amount\":1250,\"amount_received\":1250,\"currency\":\"eur\",\"status\":\"succeeded\",\"description\":\"Café Zürich ☕ — 東京 🍣\",\"note\":\"line\\nbreak\\ttab \\\"quoted\\\" \\\\ backslash\"}}}",
+    "header": "t=1767225600,v1=9e72770e73cfe88ffa85cef5deab5839045482a0b43d977e7a0ef6e7b0dba5c7",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "unicode secret",
+    "secrets": [
+      "whsec_clé_🔑"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=beb2474948dd2757b5b54c1559e016f934c9de6050d5dff10bbf326162e536dc",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "empty body",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "",
+    "header": "t=1767225600,v1=a3da9538b1027ef3556cdd2818a07896f18c8518419bf83bd55c87f30a1c5016",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "boundary: exactly tolerance in the past",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225900,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "boundary: exactly tolerance in the future",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225300,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "custom tolerance: exactly 10s",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225610,
+    "tolerance": 10,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "wrong secret",
+    "secrets": [
+      "whsec_not_the_right_secret"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "tampered body: amount changed",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4990,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "tampered body: trailing newline added",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}\n",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "tampered timestamp: t moved, signature for original t",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225601,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "unicode body normalized differently (NFD)",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_unicode\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"pi_unicode\",\"amount\":1250,\"amount_received\":1250,\"currency\":\"eur\",\"status\":\"succeeded\",\"description\":\"Café Zürich ☕ — 東京 🍣\",\"note\":\"line\\nbreak\\ttab \\\"quoted\\\" \\\\ backslash\"}}}",
+    "header": "t=1767225600,v1=9e72770e73cfe88ffa85cef5deab5839045482a0b43d977e7a0ef6e7b0dba5c7",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "empty body against signature of {}",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "",
+    "header": "t=1767225600,v1=83ef7f87f2c1e0c01ae0cfd671ce7b28e8afec6f3535b87b4342e62ac6b8b152",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "signature over body only, no timestamp prefix",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=43a225bb0ad7cba1e15e9ccc17cc3fc2fe9afc1247d63a3b56b2657b4768ba83",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "rotation: two v1, neither secret configured",
+    "secrets": [
+      "whsec_not_the_right_secret"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=c33c4a1b77d05e61550707e70879ea13f615423bb34a89394f7e7924d6fafb14",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "secret is case sensitive",
+    "secrets": [
+      "WHSEC_RISKGATE_PRIMARY_2F9C1D"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "valid only under v0, which is ignored",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v0=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=45e2a18b5961d2435af747a9b7ef55df0d91063cb200d1380f1a64b6ea1a08f6",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "old timestamp and wrong secret: signature checked first",
+    "secrets": [
+      "whsec_not_the_right_secret"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767229200,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "old timestamp",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767229200,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "future timestamp",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767222000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "boundary: one second past tolerance in the past",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225901,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "boundary: one second past tolerance in the future",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225299,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "custom tolerance: 11s past 10s",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225611,
+    "tolerance": 10,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "replay of a day-old delivery",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767312000,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "empty header",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "whitespace-only header",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "  \t ",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "missing t",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "missing v1",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "only v0",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v0=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "v1 key is case sensitive",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,V1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t key is case sensitive",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "T=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "v1 not hex",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "v1 too short",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "v1 too long",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a00",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "v1 empty",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "one bad v1 poisons the header",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=xyz",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "duplicate t, different values",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,t=1767225601,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "duplicate t, same value",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t empty",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t not a number",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=yesterday,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t negative",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=-1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t with plus sign",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=+1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t with leading zero",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=01767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t fractional",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600.5,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t in milliseconds does not match a seconds signature",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600000,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "t overflows int64",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=99999999999999999999,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "space around equals",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t = 1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "item without equals",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,garbage",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "empty key",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,=abc,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "trailing comma",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "semicolon separator",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600;v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "malformed wins over wrong secret",
+    "secrets": [
+      "whsec_not_the_right_secret"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  }
+]
