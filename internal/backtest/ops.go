@@ -458,34 +458,125 @@ func (n isNaNNode) eval(c *chunk, out []uint64) {
 	}
 }
 
-// inNumNode tests membership in a sorted list: a short list is scanned, a
-// long one binary-searched. A row's bit is set when the value is present
-// and its membership equals want, so !want is the FALSE mask of in.
+// inNumNode tests membership in a sorted list. A row's bit is set when the
+// value is present and its membership equals want, so !want is the FALSE
+// mask of in.
+//
+// Both kernels are branch-free per row. A list of up to linearSetMax values
+// is tested one list value at a time against a whole 64-row word, which is
+// the equality kernel run len(set) times over data already in L1. A longer
+// one is looked up in a collision-free hash table (numSet), one load and one
+// compare per row whatever the list's length. The earlier per-row loop, a
+// short-circuiting || over short lists and a binary search over long ones,
+// mispredicted on the real billing_region and billing_country_code columns
+// and was the most expensive operator in the 50-rule benchmark.
 type inNumNode struct {
 	x    numNode
 	set  []float64
+	hash *numSet // nil when the list is short or no table was found
 	want bool
+}
+
+// linearSetMax is the longest list tested by linear scan rather than by
+// hash lookup. Chosen on the IEEE-CIS table (experiment 6): at 5 values
+// the scan and the lookup cost about the same.
+const linearSetMax = 4
+
+func newInNum(x numNode, set []float64, want bool) inNumNode {
+	n := inNumNode{x: x, set: set, want: want}
+	if len(set) > linearSetMax {
+		n.hash = newNumSet(set)
+	}
+	return n
 }
 
 func (n inNumNode) eval(c *chunk, out []uint64) {
 	x := n.x.eval(c)
 	set, want := n.set, n.want
 	for w := range out {
-		var word uint64
-		for j, v := range x[w<<6 : min(len(x), w<<6+64)] {
-			var hit bool
-			if len(set) <= 8 {
-				for _, s := range set {
-					hit = hit || v == s
-				}
-			} else {
-				hit = containsNum(set, v)
+		xs := x[w<<6 : min(len(x), w<<6+64)]
+		var hit, present uint64
+		switch {
+		case n.hash != nil:
+			h := n.hash
+			for j, v := range xs {
+				hit |= b2u(h.has(v)) << uint(j)
 			}
-			word |= b2u(v == v && hit == want) << uint(j)
+		case len(set) <= linearSetMax:
+			for _, s := range set {
+				for j, v := range xs {
+					hit |= b2u(v == s) << uint(j)
+				}
+			}
+		default:
+			for j, v := range xs {
+				hit |= b2u(containsNum(set, v)) << uint(j)
+			}
 		}
-		out[w] = word
+		if want {
+			out[w] = hit // a hit is never NaN, so it is present
+			continue
+		}
+		for j, v := range xs {
+			present |= b2u(v == v) << uint(j)
+		}
+		out[w] = present &^ hit
 	}
 }
+
+// numSet is a list of numbers compiled into an open hash table with no
+// collisions: each value sits in the slot its hash names, and every other
+// slot holds NaN, which equals nothing. Membership is then one multiply,
+// one load and one compare, with no branch.
+//
+// The hash is multiplicative over the value's bits after adding +0, which
+// turns -0 into +0 so both find the slot of 0, as == requires. NaN is never
+// found, whatever slot its bits name.
+type numSet struct {
+	tbl   []float64
+	mult  uint64
+	shift uint
+}
+
+// numSetMaxBits bounds the table at 2^numSetMaxBits slots (512 KB).
+const numSetMaxBits = 16
+
+// newNumSet searches deterministically for a multiplier that places every
+// value of set in its own slot, starting with a table of about twice the
+// list's length and doubling it after 64 failed multipliers. It returns nil
+// if none is found, and the caller falls back to binary search.
+func newNumSet(set []float64) *numSet {
+	bits := 1
+	for 1<<bits < 2*len(set) {
+		bits++
+	}
+	seed := uint64(0x5eed)
+	for ; bits <= numSetMaxBits; bits++ {
+	next:
+		for range 64 {
+			s := &numSet{tbl: make([]float64, 1<<bits), mult: splitmix(&seed) | 1, shift: uint(64 - bits)}
+			for i := range s.tbl {
+				s.tbl[i] = math.NaN()
+			}
+			for _, v := range set {
+				slot := &s.tbl[s.slot(v)]
+				switch {
+				case *slot == v: // a duplicate, or -0 after 0
+				case *slot != *slot: // empty
+					*slot = v
+				default:
+					continue next
+				}
+			}
+			return s
+		}
+	}
+	return nil
+}
+
+func (s *numSet) slot(v float64) uint64 { return (math.Float64bits(v+0) * s.mult) >> s.shift }
+
+func (s *numSet) has(v float64) bool { return s.tbl[s.slot(v)] == v }
 
 // lutNode decides a string predicate per row by looking up the row's
 // dictionary code in a table computed once per distinct value.

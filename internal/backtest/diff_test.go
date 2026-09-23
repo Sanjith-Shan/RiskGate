@@ -151,6 +151,14 @@ var edgeRules = []string{
 	`block if :amount: = 49.99 and :amount: in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 49.99]`,
 	`block if :amount: = 49.99 and :amount: >= :distance:`,
 	`block if :amount: = 49.99 and is_missing(:distance: / 2)`,
+	// Number lists on each kernel: a short list (linear scan), longer ones
+	// (hash table), and their negations, around zero and the edge values.
+	`block if :amount: in [0, 1]`,
+	`block if not :amount: in [0, 1, 2]`,
+	`block if :amount: in [0, 1, 2, 3, 49.99]`,
+	`block if not :distance: in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]`,
+	`block if :distance: in [0.5, 9007199254740993, 0.000001, 2.5, 100, 1000, 10000, 123456789012345678901234567890]`,
+	`block if -:amount: in [0, 1, 2, 3, 4, 5]`,
 	// Constant conditions and short circuits.
 	`block if true`,
 	`block if false or not true`,
