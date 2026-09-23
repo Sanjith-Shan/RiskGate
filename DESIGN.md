@@ -33,7 +33,9 @@ RiskGate runs on the IEEE-CIS Fraud Detection dataset, real e-commerce transacti
 - **Most fields are anonymized.** Card, address and distance fields are opaque codes. There is no card country and no IP country. Rules can only use fields that exist, so the field catalog (`internal/schema/catalog.go`) is built from the real columns. `amount`, `product_code`, `card_network` (card4), `card_type` (card6), `purchaser_email_domain` (P_emaildomain), `recipient_email_domain` (R_emaildomain), `device_type`, `device_info`, `distance` (dist1), `billing_region` (addr1) and `billing_country_code` (addr2) are the raw fields, plus RiskGate's velocity features and `risk_score`. A rule such as `block if :purchaser_email_domain: = "anonymous.com" and :amount: > 300` is real. A rule about card country is not, and RiskGate does not pretend it is.
 - **Customer identity is approximated.** The dataset has no customer id. The competition's first-place team (Chris Deotte and Konstantin Yakovlev) rebuilt one from `card1`, `addr1`, and the day the card was first used, recovered as the transaction day minus `D1`. They used it to group transactions for aggregate features and not as a feature itself. RiskGate does the same thing. It uses that `uid` as one entity key for velocity features, never as a model input, and credits the team for it (`features.UIDKey`, `internal/features/key.go:87`). It is an approximation. Two customers can share a `uid`, and one customer splits across several when `D1` is missing, clipped, or drifts. Reasons that mention it say "this customer", and this document calls it an approximation every time.
 - **Email is domain only.** The dataset has `gmail.com`, never an address. So the `email` entity and `distinct_cards_per_email_24h` are domain-level signals. "Payments from anonymous.com in the last hour" is meaningful. "Payments from this person's email" is not available, and on a large domain the distinct-card count mostly measures traffic.
-- **`card1` is coarse.** Many customers share a `card1` value, which is why `uid` exists at all.
+- **`card1` is coarse.** Many customers share a `card1` value, which is why `uid` exists at all. On this data, distinct-card counts are higher for legitimate payments than for fraud, because a shared `card1` collects many cards' worth of traffic.
+- **`device_info` is not a device.** It is a model or OS string, such as "Windows" or a phone model. It is missing on 80% of payments, and where it exists many unrelated customers share it. So device velocity and `distinct_cards_per_device_24h` measure traffic from a device type, not from one machine, and the textbook card-testing rule is weak here. Rules still get the field, because it is what the data has.
+- **`uid` is missing where fraud concentrates.** Nearly every product-C payment lacks `billing_region` (addr1), so its `uid` is missing. Product C carries 38% of the fraud.
 - **Labels are mature, and have no arrival time.** `isFraud` comes from chargebacks and was assigned after the fact. A real system learns about fraud weeks later. The data does not say when each label arrived, so experiment 7 simulates arrival times from a stated assumption and labels every number it produces as simulated.
 - **Time is an offset.** `TransactionDT` counts seconds from an undisclosed reference. Where a calendar date is printed, RiskGate assumes the reference is 2017-12-01 00:00 UTC, the date commonly assumed in the competition's discussion (`backtest.DefaultEpoch`, `data.ReplayEpochUnix`). Nothing depends on that date being right, only on it being fixed.
 - **Evaluation uses a time split.** The Kaggle test file has no labels, so all evaluation splits the labelled file by time. `TransactionDT` spans about 182 days. `internal/data/split.go` cuts it into 30-day months aligned to midnight. Months 0 to 3 train, month 4 is validation, month 5 is test, and the partial seventh month (about two days) is folded into test rather than dropped. Random splits would put a customer's later payments in training and their earlier ones in test, which is leakage by another name.
@@ -319,7 +321,7 @@ Two evaluators are a liability unless they are proven to agree, because a backte
 - **Against a reference.** Inside the rules package, compiled closures are checked against a direct tree-walking interpreter on 3,000 generated rules times 200 generated rows on every `go test`, so the optimizations in the closure compiler are also checked.
 - **Parser fuzzing.** `FuzzParse` feeds arbitrary text. It checks no panics, that every rule that parses prints to text that parses back to an equal tree, that printing is a fixed point, and that every rule that loads evaluates the same as the reference interpreter.
 
-Rules generated, rows checked and disagreements found are `TBD (experiment 3)`. Bugs the fuzzer found are in the [bug log](#bug-log).
+On the real data: 10,000 generated rules over all 590,540 rows, 5.9 billion rule-row checks, 0 disagreements ([experiment 3](#3-two-evaluators-one-answer)). Bugs the fuzzer found are in the [bug log](#bug-log).
 
 ## The backtester
 
@@ -418,12 +420,20 @@ Every experiment states its machine, which is an Apple M3 Pro, with core counts,
 **Method.** Four baselines on the time split, test month touched once. Fraud-dollar recall is measured at a fixed budget of legitimate dollars blocked, chosen on validation.
 **Result.**
 
-| Model | ROC-AUC | PR-AUC | Fraud recall at 1% FPR | Fraud-dollar recall at legit-dollar budget | Brier | ECE |
-|---|---|---|---|---|---|---|
-| Rules alone | TBD (experiment 1) | n/a | TBD (experiment 1) | TBD (experiment 1) | n/a | n/a |
-| Logistic regression | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) |
-| LightGBM, raw columns | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) |
-| LightGBM, raw plus velocity | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) | TBD (experiment 1) |
+Test month (month 5 plus the two-day tail): 92,427 payments, 3.48% fraud. Evaluated once, on 2026-09-23, by `python/evaluate.py`, which wrote `results/ieee/test_touched.lock` before reading a single test label. Full output in [`results/ieee/test_metrics.md`](results/ieee/test_metrics.md). The legitimate-dollar budget is 1% of all legitimate dollars in the test month.
+
+| Model | ROC-AUC | PR-AUC | Fraud recall at 1% FPR | Fraud-dollar recall at 1% legit-dollar budget |
+|---|---|---|---|---|
+| Rules alone (`rules/baseline.rules`, 8 rules, no `risk_score`) | n/a | n/a | 28.3% recall at 5.72% FPR, its one operating point | 25.8% at 8.56% of legit dollars |
+| Logistic regression | 0.7947 | 0.1134 | 0.5% | 0.9% |
+| LightGBM, raw columns | 0.7745 | 0.2016 | 14.8% | 15.6% |
+| **LightGBM, raw plus velocity** | **0.8105** | **0.2275** | **16.8%** | **20.5%** |
+
+**What it says.** At the same 1% false-positive rate, the velocity features catch 16.8% of fraud instead of 14.8%, and at the same legitimate-dollar budget they catch 20.5% of fraud dollars instead of 15.6%, about a third more. ROC-AUC rises from 0.7745 to 0.8105. That is a real gain, and a modest one. The honest reading has three parts. First, everything is lower on test than on validation (validation ROC-AUC was 0.8450 for the full model), which is what a time split is supposed to reveal. Second, the absolute numbers are low because RiskGate's model sees only the eleven interpretable raw fields a rule author can name, plus its own velocity features. It deliberately leaves out the hundreds of anonymous Vesta columns (`C1`-`C14`, `D`, `M`, `V`) that carry most of the signal in competition solutions, because a rule cannot name them and a reason cannot explain them. Third, the velocity features are weaker than they would be on data with real identities. `device_info` is a model string such as "Windows", not a device, `card1` is shared by many customers, and `uid` is missing for nearly every product-C payment, where 38% of the fraud is. Experiment 4 found these by looking.
+
+**The rules baseline** was tuned by hand on the validation month (the log is [`results/rules_baseline/TUNING.md`](results/rules_baseline/TUNING.md)), so its validation numbers are optimistic. On test it catches more fraud than the model's 1%-FPR operating point, at over five times the false-positive rate, and it has no threshold to move. That is the argument for the design in this document: rules are how an analyst expresses a policy, and `risk_score` is how the model's ranking becomes one more attribute a rule can use.
+
+**Calibration** of the served model on test: isotonic calibration (fitted on validation) cut the expected calibration error from 0.0071 to 0.0038 over 10 equal-width bins, and from 0.0066 to 0.0057 over 20 equal-count bins. The Brier score was unchanged (0.0302 to 0.0303). The reliability plot is `results/ieee/reliability.png`.
 
 Context, said once. The competition's winning private-leaderboard AUC was 0.945884, on Kaggle's own test set with months of feature engineering. RiskGate uses a different split and a different goal. It is not competing with that number and does not compare itself to it. The claim is the ablation, not a rank.
 
@@ -528,7 +538,7 @@ Across the four rules tried, the naive backtest understates fraud dollars caught
 | Model threshold alone | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) |
 | Model plus rules | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) |
 
-Assumed per-dispute fee `TBD`.
+Assumed per-dispute fee: $15.00, Stripe's published US dispute fee, used as an assumption in both RiskGate's and Clearinghouse's write-ups.
 
 ### 9. The risk service fails
 
@@ -545,7 +555,7 @@ Assumed per-dispute fee `TBD`.
 Real bugs found by tests, fuzzing and parity checks, each with a regression test.
 
 - [`internal/rules/BUGLOG.md`](internal/rules/BUGLOG.md). Two parser bugs found by `FuzzParse`. The checker was quadratic in nesting depth (a 20,000-deep `is_missing` chain took 7.0 s to load and now takes 58 ms), and junk input produced one diagnostic per byte.
-- `internal/backtest/BUGLOG.md`, for the vectorized evaluator and the differential test. `TBD: not written yet.`
+- [`internal/backtest/BUGLOG.md`](internal/backtest/BUGLOG.md), for the vectorized evaluator and the differential test. The differential test never failed on its own, so the log also records the planted bugs used to prove it can fail, including a planted two-valued `not`.
 - **The model evaluator.** LightGBM's zero threshold is `1e-35f`, not `1e-35` (see [the Go evaluator](#the-go-evaluator)). Found by reading `meta.h` while writing the fixture generator, and pinned by fixtures that probe the values between the two.
 - **Calibration parity.** `np.interp`'s last bit depends on whether NumPy's build fuses a multiply-add. Fixed by writing the interpolation step by step in both languages.
 - **Export parity.** pandas' default float parser can be one ulp off. The Python side reads the export with `float_precision="round_trip"`.
