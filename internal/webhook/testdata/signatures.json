@@ -134,12 +134,24 @@
     "error": null
   },
   {
-    "name": "uppercase hex accepted",
+    "name": "a junk v1 next to a good one is just a non-match",
     "secrets": [
       "whsec_riskgate_primary_2f9c1d"
     ],
     "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
-    "header": "t=1767225600,v1=B1926CB11FCC219503F6F26DE23BD91AA13113DF33F218EA2C87990E2EFF612A",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=xyz",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": true,
+    "error": null
+  },
+  {
+    "name": "leading-zero t signed as sent",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=01767225600,v1=04ac88a6706cc1f840b8f8f8d4529cab2d41b93ddd1c7ea5e2e622c96ab13355",
     "now": 1767225600,
     "tolerance": 300,
     "valid": true,
@@ -551,10 +563,10 @@
     "now": 1767225600,
     "tolerance": 300,
     "valid": false,
-    "error": "malformed_header"
+    "error": "no_matching_signature"
   },
   {
-    "name": "v1 too short",
+    "name": "v1 truncated",
     "secrets": [
       "whsec_riskgate_primary_2f9c1d"
     ],
@@ -563,7 +575,7 @@
     "now": 1767225600,
     "tolerance": 300,
     "valid": false,
-    "error": "malformed_header"
+    "error": "no_matching_signature"
   },
   {
     "name": "v1 too long",
@@ -575,7 +587,43 @@
     "now": 1767225600,
     "tolerance": 300,
     "valid": false,
-    "error": "malformed_header"
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "v1 containing equals sign",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a=",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "uppercase hex does not match",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,v1=B1926CB11FCC219503F6F26DE23BD91AA13113DF33F218EA2C87990E2EFF612A",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
+  },
+  {
+    "name": "leading-zero t with signature over canonical t",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=01767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "no_matching_signature"
   },
   {
     "name": "v1 empty",
@@ -590,12 +638,12 @@
     "error": "malformed_header"
   },
   {
-    "name": "one bad v1 poisons the header",
+    "name": "empty v1 next to a valid one",
     "secrets": [
       "whsec_riskgate_primary_2f9c1d"
     ],
     "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
-    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=xyz",
+    "header": "t=1767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a,v1=",
     "now": 1767225600,
     "tolerance": 300,
     "valid": false,
@@ -674,18 +722,6 @@
     "error": "malformed_header"
   },
   {
-    "name": "t with leading zero",
-    "secrets": [
-      "whsec_riskgate_primary_2f9c1d"
-    ],
-    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
-    "header": "t=01767225600,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
-    "now": 1767225600,
-    "tolerance": 300,
-    "valid": false,
-    "error": "malformed_header"
-  },
-  {
     "name": "t fractional",
     "secrets": [
       "whsec_riskgate_primary_2f9c1d"
@@ -716,6 +752,54 @@
     ],
     "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
     "header": "t=99999999999999999999,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t with 16 digits",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1000000000000000,v1=732c50b151c3baa1421a66edec34352390df84b0a371354e22a364bcb8d4d590",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t with 15 digits parses, then fails tolerance",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=999999999999999,v1=8dc1946a8120edae7a316f82295c958a121e829c3c9c7baede0afa2fafe8d5af",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "timestamp_outside_tolerance"
+  },
+  {
+    "name": "empty element",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600,,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
+    "now": 1767225600,
+    "tolerance": 300,
+    "valid": false,
+    "error": "malformed_header"
+  },
+  {
+    "name": "t containing equals sign",
+    "secrets": [
+      "whsec_riskgate_primary_2f9c1d"
+    ],
+    "payload": "{\"id\":\"evt_1QbX7d2eZvKYlo2C\",\"object\":\"event\",\"type\":\"charge.dispute.created\",\"created\":1767225600,\"api_version\":\"2026-01-01\",\"data\":{\"object\":{\"id\":\"dp_1QbX7d2eZvKYlo2C\",\"object\":\"dispute\",\"payment_intent\":\"pi_3QbX7c2eZvKYlo2C\",\"amount\":4999,\"currency\":\"usd\",\"reason\":\"fraudulent\",\"status\":\"needs_response\"}}}",
+    "header": "t=1767225600=1,v1=b1926cb11fcc219503f6f26de23bd91aa13113df33f218ea2c87990e2eff612a",
     "now": 1767225600,
     "tolerance": 300,
     "valid": false,

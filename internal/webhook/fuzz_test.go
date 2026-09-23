@@ -1,8 +1,8 @@
 package webhook
 
 import (
-	"crypto/sha256"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -10,7 +10,7 @@ import (
 
 // FuzzParseHeader feeds arbitrary header values to the parser. It must never
 // panic, every error must be malformed_header, and every success must have
-// a timestamp and only 32-byte signatures.
+// a timestamp that round-trips through its text and only non-empty v1s.
 func FuzzParseHeader(f *testing.F) {
 	sig := strings.Repeat("0f", 32)
 	for _, seed := range []string{
@@ -29,15 +29,18 @@ func FuzzParseHeader(f *testing.F) {
 			}
 			return
 		}
-		if h.Timestamp < 0 {
-			t.Fatalf("negative timestamp from %q", value)
+		if n := len(h.TimestampText); n == 0 || n > maxTimestampDigits {
+			t.Fatalf("t text %q from %q", h.TimestampText, value)
+		}
+		if got, err := strconv.ParseInt(h.TimestampText, 10, 64); err != nil || got != h.Timestamp || got < 0 {
+			t.Fatalf("t %d does not match its text %q", h.Timestamp, h.TimestampText)
 		}
 		if len(h.Signatures) == 0 {
 			t.Fatalf("accepted %q with no signatures", value)
 		}
 		for _, s := range h.Signatures {
-			if len(s) != sha256.Size {
-				t.Fatalf("signature of %d bytes from %q", len(s), value)
+			if s == "" {
+				t.Fatalf("empty v1 accepted from %q", value)
 			}
 		}
 	})
