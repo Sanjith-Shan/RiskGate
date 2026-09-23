@@ -1,0 +1,54 @@
+# RiskGate starter rule set.
+#
+# Evaluation follows Radar's documented order: allow rules first (an allowed
+# payment skips block and review), then block, then review. A payment no
+# rule matches is allowed. Shadow rules run on every payment and are logged,
+# never enforced; GET /v1/rules/shadow compares them with their backtest.
+#
+# EVERY THRESHOLD BELOW IS A PLACEHOLDER. They are plausible starting points,
+# not tuned values. Tune them on the VALIDATION month only (the page's
+# backtest and the risk_score sweep, restricted to that month), never on the
+# test month, and record the chosen values and why.
+#
+# Check this file with:  go run ./cmd/rulecheck -lists rules/lists.json rules/default.rules
+
+# --- Allow: long-standing, low-risk customers on trusted mail domains -------
+# A customer (the approximate uid) seen for 30+ days on a mainstream domain
+# with a low model score. PLACEHOLDER: 30 days, risk_score < 20.
+allow if :purchaser_email_domain: in @trusted_domains and :uid_seconds_since_first: > 2592000 and :risk_score: < 20
+
+# --- Block: the model is confident ------------------------------------------
+# PLACEHOLDER: pick the cut-off from the risk_score sweep on validation.
+block if :risk_score: >= 90
+
+# --- Block: card testing -----------------------------------------------------
+# Many different cards tried on one device in a day, the classic
+# card-testing signature. PLACEHOLDER: > 5 cards.
+block if :distinct_cards_per_device_24h: > 5
+
+# --- Block: velocity burst on one card --------------------------------------
+# A burst of payments on one card in an hour, at well above the card's usual
+# amount. PLACEHOLDER: >= 8 payments, 3x the 7-day mean.
+block if :card_txn_count_1h: >= 8 and :amount: > 3 * :card_mean_amount_7d:
+
+# --- Block: throwaway mail domains with a large amount ----------------------
+# PLACEHOLDER: $500.
+block if :purchaser_email_domain: in @disposable_domains and :amount: > 500
+
+# --- Review: anonymous.com with a large amount, or an unusual spend --------
+# PLACEHOLDER: $300, risk_score 50, 5x the customer's 7-day mean.
+review if :purchaser_email_domain: = "anonymous.com" and :amount: > 300
+review if :risk_score: >= 50
+review if :uid_amount_ratio_7d: > 5 and :amount: > 200
+
+# --- Review: product C with no device information --------------------------
+# Product C is the dataset's highest-fraud product code, and missing device
+# data removes a signal the model leans on. is_missing makes the intent
+# explicit: comparisons against a missing value are always false.
+review if :product_code: = "C" and is_missing(:device_info:) and :risk_score: >= 30
+
+# --- Shadow: candidates being measured before they go live -----------------
+# Many cards on one purchaser email domain in a day. PLACEHOLDER: > 20.
+shadow review if :distinct_cards_per_email_24h: > 20 and not :purchaser_email_domain: in @trusted_domains
+# A lower model cut-off than the live block rule. PLACEHOLDER: 80.
+shadow block if :risk_score: >= 80

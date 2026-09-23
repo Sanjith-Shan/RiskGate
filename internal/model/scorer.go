@@ -135,7 +135,22 @@ func (s *Scorer) Explain(row schema.Row) []Reason {
 	x := make([]float64, n)
 	contrib := make([]float64, n)
 	s.Contributions(row, x, contrib)
+	return s.ExplainContributions(row, x, contrib, MaxReasons)
+}
 
+// NumFeatures is the number of model inputs, the length Contributions needs
+// for its x and out buffers.
+func (s *Scorer) NumFeatures() int { return s.model.NumFeatures() }
+
+// FeatureNames returns the model inputs in order. Do not modify the result.
+func (s *Scorer) FeatureNames() []string { return s.model.FeatureNames() }
+
+// ExplainContributions is Explain for a caller that already has row's model
+// inputs x and Saabas contributions (from Contributions), such as the
+// service, which logs the contributions and so computes them anyway. It
+// returns at most limit reasons.
+func (s *Scorer) ExplainContributions(row schema.Row, x, contrib []float64, limit int) []Reason {
+	n := s.model.NumFeatures()
 	idx := make([]int, 0, n)
 	for i, c := range contrib {
 		if c > 0 {
@@ -146,8 +161,8 @@ func (s *Scorer) Explain(row schema.Row) []Reason {
 		// Largest first; ties by input order so output is deterministic.
 		return cmp.Or(cmp.Compare(contrib[b], contrib[a]), cmp.Compare(a, b))
 	})
-	if len(idx) > MaxReasons {
-		idx = idx[:MaxReasons]
+	if len(idx) > limit {
+		idx = idx[:limit]
 	}
 	out := make([]Reason, len(idx))
 	for k, i := range idx {

@@ -87,10 +87,11 @@ type Deduper struct {
 	maxEntries int
 	now        func() time.Time
 
-	mu        sync.Mutex
-	byID      map[string]*list.Element // value is *seenEntry
-	order     *list.List               // oldest first by seen time
-	evictions uint64
+	mu         sync.Mutex
+	byID       map[string]*list.Element // value is *seenEntry
+	order      *list.List               // oldest first by seen time
+	evictions  uint64
+	duplicates uint64
 }
 
 type seenEntry struct {
@@ -128,6 +129,7 @@ func (d *Deduper) Begin(id string) DedupeStatus {
 	d.expire(now)
 	if el, ok := d.byID[id]; ok {
 		if el.Value.(*seenEntry).done {
+			d.duplicates++
 			return StatusDuplicate
 		}
 		return StatusInFlight
@@ -173,6 +175,15 @@ func (d *Deduper) Evictions() uint64 {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.evictions
+}
+
+// Duplicates returns how many deliveries Begin recognised as already
+// processed: the redeliveries at-least-once delivery produced and dedupe
+// absorbed.
+func (d *Deduper) Duplicates() uint64 {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.duplicates
 }
 
 // SeenEvent is one processed id in a snapshot.

@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RiskGate Rule Lab</title>
+<!--
+  The rule-authoring page. One static file, no framework, no build step:
+  type a rule, see its errors as you type, and see what it would have done.
+  It uses only the public JSON API (/v1/rules, /v1/rules/test,
+  /v1/rules/sweep, /v1/info).
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f6f4;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: #e2e1dc;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #7a7974;
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --series-1: #2a78d6; /* precision */
+  --series-2: #eb6834; /* fraud-dollar recall */
+  --grid: #e8e7e2;
+  --ok: #1d7a3e;
+  --ok-bg: #e7f4ec;
+  --err: #b42323;
+  --err-bg: #fbeceb;
+  --warn: #8a5a00;
+  --warn-bg: #fdf3dc;
+  --badge: #5b3fd1;
+  --badge-bg: #eeeafd;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #121211;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --border: #33332f;
+    --text: #f4f4f1;
+    --text-2: #c3c2b7;
+    --text-3: #8f8e86;
+    --accent: #3987e5;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --grid: #2b2b28;
+    --ok: #6fcf8f;
+    --ok-bg: #16281c;
+    --err: #f08a8a;
+    --err-bg: #2d1717;
+    --warn: #e8b85a;
+    --warn-bg: #2b2412;
+    --badge: #b9adff;
+    --badge-bg: #26213d;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+}
+header {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface);
+}
+header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+header .sub { color: var(--text-3); font-size: 13px; }
+header .spacer { flex: 1; }
+.badge {
+  font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px; color: var(--badge); background: var(--badge-bg);
+}
+.pill { font-size: 12px; color: var(--text-2); background: var(--surface-2); padding: 3px 8px; border-radius: 999px; }
+main {
+  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 20px;
+  padding: 20px 24px 40px; max-width: 1480px; margin: 0 auto;
+}
+@media (max-width: 1050px) { main { grid-template-columns: minmax(0, 1fr); padding: 16px; } }
+.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.card h2 { font-size: 13px; font-weight: 650; margin: 0 0 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.05em; }
+.card h2 .hint { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-3); margin-left: 6px; }
+textarea {
+  width: 100%; min-height: 92px; resize: vertical; padding: 12px 14px;
+  font: 14px/1.6 var(--mono); color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 8px; outline: none;
+}
+textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.row label { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+input[type=date] {
+  font: 13px var(--sans); color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px;
+}
+button {
+  font: 600 13px var(--sans); border-radius: 7px; padding: 7px 14px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.status { font-size: 13px; margin-left: auto; }
+.status.ok { color: var(--ok); }
+.status.err { color: var(--err); }
+.status.busy { color: var(--text-3); }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.examples button { font: 12px var(--mono); padding: 3px 8px; font-weight: 400; color: var(--text-2); }
+pre.diag {
+  margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; overflow-x: auto;
+  font: 13px/1.5 var(--mono); white-space: pre; background: var(--err-bg); color: var(--err);
+}
+pre.diag.warn { background: var(--warn-bg); color: var(--warn); }
+.summary { font-size: 15px; line-height: 1.6; margin: 0 0 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; }
+.kpi .label { font-size: 12px; color: var(--text-2); }
+.kpi .value { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.kpi .detail { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; color: var(--text-2); background: var(--surface-2); border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+.note.warn { color: var(--warn); background: var(--warn-bg); }
+.empty { color: var(--text-3); font-size: 13px; }
+.tablewrap { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { color: var(--text-2); font-weight: 600; font-size: 12px; }
+td.num, th.num { text-align: right; }
+td.wrap { white-space: normal; word-break: break-word; min-width: 220px; }
+td .tag { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+.tag.fraud { color: var(--err); background: var(--err-bg); }
+.tag.legit { color: var(--ok); background: var(--ok-bg); }
+.tag.unknown { color: var(--text-3); background: var(--surface-2); }
+.null { color: var(--text-3); }
+pre.rules {
+  margin: 0; font: 12.5px/1.65 var(--mono); white-space: pre-wrap; word-break: break-word;
+  max-height: 420px; overflow: auto; color: var(--text);
+}
+pre.rules .c { color: var(--text-3); }
+pre.rules .a { font-weight: 650; }
+pre.rules .s { color: var(--text-3); }
+ol.rulelist { margin: 0; padding: 0; list-style: none; font: 12.5px/1.5 var(--mono); }
+ol.rulelist li { padding: 6px 0; border-bottom: 1px solid var(--border); word-break: break-word; }
+ol.rulelist li:last-child { border-bottom: 0; }
+ol.rulelist .act { font-weight: 650; }
+ol.rulelist .shadow { color: var(--text-3); }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .axis { fill: var(--text-3); font-size: 11px; }
+.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
+.legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  white-space: nowrap; display: none; font-variant-numeric: tabular-nums;
+}
+.tip b { font-weight: 650; }
+kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); }
+details summary { cursor: pointer; font-size: 12px; color: var(--text-2); margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>RiskGate Rule Lab</h1>
+  <span class="sub">Type a rule, see its errors, see what it would have done.</span>
+  <span class="spacer"></span>
+  <span class="pill" id="version">rules v…</span>
+  <span class="badge" id="provenance" hidden></span>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <h2>Rule <span class="hint">one rule, e.g. <code>block if :card_txn_count_1h: &gt;= 8</code></span></h2>
+      <textarea id="rule" spellcheck="false" autocomplete="off" aria-label="Rule"
+        placeholder="block if :distinct_cards_per_device_24h: > 5">block if :card_txn_count_1h: >= 8 and :amount: > 3 * :card_mean_amount_7d:</textarea>
+      <div class="examples" id="examples"></div>
+      <div class="row">
+        <label>From <input type="date" id="from"></label>
+        <label>To <input type="date" id="to"></label>
+        <button class="primary" id="run">Backtest</button>
+        <span class="pill"><kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+        <span class="status busy" id="status">Checking…</span>
+      </div>
+      <pre class="diag" id="diag" hidden></pre>
+    </section>
+
+    <section class="card" id="result-card">
+      <h2>What it would have done</h2>
+      <div id="result"><p class="empty">Run a backtest to see what this rule would have changed, against the rules in force.</p></div>
+    </section>
+
+    <section class="card">
+      <h2>Sample payments <span class="hint">spread over the period, ones the rule changes first</span></h2>
+      <div id="samples"><p class="empty">Ten matching payments will appear here.</p></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2>risk_score threshold sweep <span class="hint"><code>block if :risk_score: &gt;= k</code></span></h2>
+      <div class="legend" id="legend" hidden>
+        <span><i style="background: var(--series-1)"></i>Precision</span>
+        <span><i style="background: var(--series-2)"></i>Share of fraud dollars caught</span>
+      </div>
+      <div class="chart" id="chart"><p class="empty">Loading…</p></div>
+      <details id="sweep-table-wrap" hidden><summary>Show as a table</summary><div class="tablewrap" id="sweep-table"></div></details>
+    </section>
+
+    <section class="card">
+      <h2>Rules in force <span class="hint" id="rules-meta"></span></h2>
+      <ol class="rulelist" id="rulelist"><li class="empty">Loading…</li></ol>
+      <details><summary>Show the source, with comments</summary><pre class="rules" id="rules"></pre></details>
+    </section>
+  </div>
+</main>
+
+<div class="tip" id="tip"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const usd = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD", maximumFractionDigits: 0});
+const usd2 = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
+const int = new Intl.NumberFormat("en-US");
+const pct = (v) => v == null ? "–" : (v * 100 >= 10 || v === 0 ? (v * 100).toFixed(0) : (v * 100).toFixed(1)) + "%";
+
+const EXAMPLES = [
+  "block if :distinct_cards_per_device_24h: > 5",
+  "review if :purchaser_email_domain: = \"anonymous.com\" and :amount: > 300",
+  "block if :risk_score: >= 85",
+  "allow if :uid_txn_count_7d: >= 5 and :risk_score: < 10",
+  "review if :product_code: = \"C\" and is_missing(:device_info:)",
+];
+
+async function api(path, body) {
+  const opt = body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)};
+  const res = await fetch(path, opt);
+  const data = await res.json().catch(() => ({}));
+  return {status: res.status, data};
+}
+
+// ---- As-you-type validation -------------------------------------------------
+// Debounced calls to the validate-only mode; only the latest answer is shown,
+// so a slow reply to an old keystroke never overwrites a newer one.
+let seq = 0, timer = 0, lastValid = false;
+function scheduleValidate() {
+  clearTimeout(timer);
+  setStatus("busy", "Checking…");
+  timer = setTimeout(validate, 200);
+}
+async function validate() {
+  const mine = ++seq;
+  const {data} = await api("/v1/rules/test", {rule: $("rule").value, validate_only: true});
+  if (mine !== seq) return;
+  const diags = data.diagnostics || [];
+  const errors = diags.filter((d) => d.severity === "error");
+  lastValid = !!data.ok;
+  $("run").disabled = !lastValid;
+  const d = $("diag");
+  if (data.error && errors.length === 0) {
+    d.hidden = false; d.className = "diag"; d.textContent = data.error;
+  } else if (diags.length) {
+    d.hidden = false; d.className = errors.length ? "diag" : "diag warn"; d.textContent = data.rendered;
+  } else {
+    d.hidden = true;
+  }
+  if (lastValid) setStatus("ok", diags.length ? "Valid, with warnings" : "Valid");
+  else setStatus("err", errors.length ? `${errors.length} error${errors.length > 1 ? "s" : ""}` : "Not testable");
+}
+function setStatus(kind, text) { const s = $("status"); s.className = "status " + kind; s.textContent = text; }
+
+// ---- Backtest ---------------------------------------------------------------
+async function backtest() {
+  if (!lastValid) return;
+  $("run").disabled = true;
+  setStatus("busy", "Backtesting…");
+  const body = {rule: $("rule").value};
+  if ($("from").value) body.from = $("from").value;
+  if ($("to").value) body.to = $("to").value;
+  const {status, data} = await api("/v1/rules/test", body);
+  $("run").disabled = false;
+  if (status !== 200) {
+    setStatus("err", "Backtest failed");
+    $("result").innerHTML = `<div class="note warn">${esc((data.error && data.error.message) || data.error || "The backtest failed.")}</div>`;
+    return;
+  }
+  setStatus("ok", `Backtested in ${data.elapsed_ms.toFixed(0)} ms`);
+  renderReport(data.report);
+  renderSamples(data.report);
+}
+
+function kpi(label, value, detail) {
+  return `<div class="kpi"><div class="label">${esc(label)}</div><div class="value">${value}</div>${detail ? `<div class="detail">${detail}</div>` : ""}</div>`;
+}
+const cd = (c) => `${int.format(c.count)} · ${usd.format(c.dollars)}`;
+
+function renderReport(r) {
+  const ch = r.changed, verb = {block: "Newly blocked", review: "Newly reviewed", allow: "Let through"}[r.action];
+  let h = `<p class="summary">${esc(r.summary)}</p><div class="kpis">`;
+  h += kpi("Matched", int.format(r.matched.all.count), usd.format(r.matched.all.dollars));
+  h += kpi(verb, int.format(ch.all.count), usd.format(ch.all.dollars));
+  h += kpi("Fraud among them", int.format(ch.fraud.count), usd.format(ch.fraud.dollars));
+  h += kpi("Legitimate among them", int.format(ch.legit.count), usd.format(ch.legit.dollars));
+  h += kpi("Precision", pct(r.precision), "fraud share of changed, by count");
+  h += kpi(r.action === "allow" ? "Fraud dollars let through" : "Fraud dollars caught", pct(r.fraud_dollar_share), `of ${usd.format(r.period.fraud.dollars)} in the period`);
+  if (r.action === "allow") {
+    h += kpi("Overrides of blocks", r.overrides_block ? int.format(r.overrides_block.all.count) : "0",
+      r.overrides_block ? `${int.format(r.overrides_block.fraud.count)} were fraud` : "");
+    h += kpi("Overrides of reviews", r.overrides_review ? int.format(r.overrides_review.all.count) : "0",
+      r.overrides_review ? `${int.format(r.overrides_review.fraud.count)} were fraud` : "");
+  }
+  h += `</div>`;
+  if (r.overlaps && r.overlaps.length) {
+    h += `<div class="tablewrap"><table><thead><tr><th>Overlaps with rules in force</th><th class="num">Both match</th><th class="num">Share</th><th class="num">Decided by it today</th></tr></thead><tbody>`;
+    for (const o of r.overlaps.slice(0, 6)) {
+      h += `<tr><td class="wrap"><code>${esc(o.rule)}</code></td><td class="num">${int.format(o.both)}</td><td class="num">${pct(o.share)}</td><td class="num">${int.format(o.decided_by)}</td></tr>`;
+    }
+    h += `</tbody></table></div>`;
+  } else {
+    h += `<div class="note">No overlap with the rules in force: every match is incremental.</div>`;
+  }
+  if (r.immature && r.immature.count > 0) {
+    h += `<div class="note">Label maturity: ${int.format(r.immature.count)} payments (${usd.format(r.immature.dollars)}) from the last ${r.maturity_days} days were left out, because their disputes may not have arrived yet.</div>`;
+  }
+  for (const w of r.warnings || []) h += `<div class="note warn">${esc(w)}</div>`;
+  $("result").innerHTML = h;
+}
+
+function fmtField(v) {
+  if (v === null || v === undefined) return `<span class="null">missing</span>`;
+  if (typeof v === "number") return Number.isInteger(v) ? int.format(v) : v.toFixed(2);
+  return esc(v);
+}
+function renderSamples(r) {
+  if (!r.samples.length) { $("samples").innerHTML = `<p class="empty">The rule matches no payments in this period.</p>`; return; }
+  const fields = r.sample_fields.filter((f) => f !== "amount").slice(0, 6);
+  let h = `<div class="tablewrap"><table><thead><tr><th>Payment</th><th>Time</th><th class="num">Amount</th><th>Label</th><th>Today</th><th>With rule</th>`;
+  for (const f of fields) h += `<th>${esc(f)}</th>`;
+  h += `</tr></thead><tbody>`;
+  for (const s of r.samples) {
+    h += `<tr><td>txn_${s.id}</td><td>${esc(s.time.replace("T", " ").replace("Z", ""))}</td><td class="num">${usd2.format(s.amount)}</td>`;
+    h += `<td><span class="tag ${esc(s.label)}">${esc(s.label)}</span></td><td>${esc(s.current)}</td><td><b>${esc(s.proposed)}</b></td>`;
+    for (const f of fields) h += `<td>${fmtField(s.fields[f])}</td>`;
+    h += `</tr>`;
+  }
+  $("samples").innerHTML = h + `</tbody></table></div>`;
+}
+
+// ---- Rules in force ----------------------------------------------------------
+async function loadRules() {
+  const {data} = await api("/v1/rules");
+  $("version").textContent = `rules v${data.version}`;
+  $("rules-meta").textContent = `version ${data.version}, ${data.rules.length} rules`;
+  // Radar's order: allow, then block, then review; shadow rules last.
+  const rank = (r) => (r.shadow ? 3 : 0) + ({allow: 0, block: 1, review: 2}[r.action]) / 10;
+  $("rulelist").innerHTML = data.rules.slice().sort((a, b) => rank(a) - rank(b) || a.index - b.index).map((r) => {
+    const m = /^(\s*(?:shadow\s+)?(?:allow|block|review))(.*)$/.exec(r.text) || ["", "", r.text];
+    return `<li class="${r.shadow ? "shadow" : ""}" title="${esc(r.id)}"><span class="act">${esc(m[1])}</span>${esc(m[2])}</li>`;
+  }).join("") || `<li class="empty">No rules: every payment is allowed.</li>`;
+  $("rules").innerHTML = data.text.split("\n").map((line) => {
+    const t = line.trimStart();
+    if (t.startsWith("#")) return `<span class="c">${esc(line)}</span>`;
+    const m = /^(\s*)((?:shadow\s+)?(?:allow|block|review))(\b.*)$/.exec(line);
+    return m ? `${esc(m[1])}<span class="a">${esc(m[2])}</span>${esc(m[3])}` : esc(line);
+  }).join("\n");
+}
+
+// ---- Threshold sweep chart ---------------------------------------------------
+// Two ratios on one 0-100% axis: precision and the share of fraud dollars
+// caught, against the risk_score threshold. Hover for exact values.
+async function loadSweep() {
+  const {status, data} = await api("/v1/rules/sweep");
+  if (status !== 200) {
+    $("chart").innerHTML = `<p class="empty">${esc((data.error && data.error.message) || "No backtest table loaded.")}</p>`;
+    return;
+  }
+  const pts = data.sweep.points.filter((p) => p.matched.count > 0);
+  drawSweep(pts);
+  let t = `<table><thead><tr><th class="num">Threshold</th><th class="num">Matched</th><th class="num">Precision</th><th class="num">Fraud $ caught</th><th class="num">Legit $ blocked</th></tr></thead><tbody>`;
+  for (const p of pts.filter((p) => p.threshold % 10 === 0 || p.threshold === 99)) {
+    t += `<tr><td class="num">${p.threshold}</td><td class="num">${int.format(p.matched.count)}</td><td class="num">${pct(p.precision)}</td><td class="num">${pct(p.fraud_dollar_recall)}</td><td class="num">${usd.format(p.legit.dollars)}</td></tr>`;
+  }
+  $("sweep-table").innerHTML = t + `</tbody></table>`;
+  $("sweep-table-wrap").hidden = false;
+}
+
+function drawSweep(pts) {
+  if (!pts.length) { $("chart").innerHTML = `<p class="empty">No scored payments in the table.</p>`; return; }
+  $("legend").hidden = false;
+  const W = 460, H = 240, m = {l: 38, r: 14, t: 10, b: 30};
+  const x = (k) => m.l + (k / 99) * (W - m.l - m.r);
+  const y = (v) => m.t + (1 - v) * (H - m.t - m.b);
+  const line = (key) => {
+    let d = "", pen = false;
+    for (const p of pts) {
+      const v = p[key];
+      if (v == null) { pen = false; continue; }
+      d += `${pen ? "L" : "M"}${x(p.threshold).toFixed(1)},${y(v).toFixed(1)}`;
+      pen = true;
+    }
+    return d;
+  };
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Precision and share of fraud dollars caught by risk_score threshold">`;
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/>`;
+    s += `<text class="axis" x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${v * 100}%</text>`;
+  }
+  for (const k of [0, 20, 40, 60, 80, 99]) s += `<text class="axis" x="${x(k)}" y="${H - 10}" text-anchor="middle">${k}</text>`;
+  s += `<text class="axis" x="${W - m.r}" y="${H - m.b - 6}" text-anchor="end">risk_score ≥</text>`;
+  s += `<path d="${line("precision")}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<path d="${line("fraud_dollar_recall")}" fill="none" stroke="var(--series-2)" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<line id="xhair" y1="${m.t}" y2="${H - m.b}" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
+  s += `<circle id="dot1" r="4" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
+  s += `<circle id="dot2" r="4" fill="var(--series-2)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
+  s += `<rect id="hit" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/>`;
+  $("chart").innerHTML = s + `</svg>`;
+
+  const svg = $("chart").querySelector("svg"), tip = $("tip");
+  const byK = new Map(pts.map((p) => [p.threshold, p]));
+  const show = (evt) => {
+    const box = svg.getBoundingClientRect();
+    const sx = (evt.clientX - box.left) * (W / box.width);
+    let k = Math.round(((sx - m.l) / (W - m.l - m.r)) * 99);
+    k = Math.max(0, Math.min(99, k));
+    let p = byK.get(k);
+    for (let d = 1; !p && d < 100; d++) p = byK.get(k - d) || byK.get(k + d);
+    if (!p) return;
+    const X = x(p.threshold);
+    const xh = $("xhair");
+    xh.setAttribute("x1", X); xh.setAttribute("x2", X); xh.setAttribute("visibility", "visible");
+    for (const [id, key] of [["dot1", "precision"], ["dot2", "fraud_dollar_recall"]]) {
+      const c = $(id);
+      if (p[key] == null) { c.setAttribute("visibility", "hidden"); continue; }
+      c.setAttribute("cx", X); c.setAttribute("cy", y(p[key])); c.setAttribute("visibility", "visible");
+    }
+    tip.innerHTML = `<b>risk_score ≥ ${p.threshold}</b><br>Precision ${pct(p.precision)}<br>Fraud $ caught ${pct(p.fraud_dollar_recall)}<br>Matched ${int.format(p.matched.count)} · legit ${usd.format(p.legit.dollars)}`;
+    tip.style.display = "block";
+    const tx = Math.min(evt.pageX + 14, window.scrollX + document.documentElement.clientWidth - tip.offsetWidth - 8);
+    tip.style.left = tx + "px"; tip.style.top = (evt.pageY - tip.offsetHeight - 10) + "px";
+  };
+  const hide = () => {
+    tip.style.display = "none";
+    for (const id of ["xhair", "dot1", "dot2"]) $(id).setAttribute("visibility", "hidden");
+  };
+  $("hit").addEventListener("mousemove", show);
+  $("hit").addEventListener("mouseleave", hide);
+}
+
+// ---- Wiring ------------------------------------------------------------------
+async function loadInfo() {
+  const {data} = await api("/v1/info");
+  if (data.provenance) { const b = $("provenance"); b.textContent = data.provenance; b.hidden = false; }
+  if (data.table_from) $("from").value = data.table_from.slice(0, 10);
+  // The API's "to" is exclusive, so the day after the last payment.
+  if (data.table_to) $("to").value = new Date(Date.parse(data.table_to) + 86400000).toISOString().slice(0, 10);
+  if (!data.backtests) { $("run").title = "Start the service with -table to enable backtests"; }
+}
+
+for (const ex of EXAMPLES) {
+  const b = document.createElement("button");
+  b.textContent = ex;
+  b.addEventListener("click", () => { $("rule").value = ex; scheduleValidate(); $("rule").focus(); });
+  $("examples").appendChild(b);
+}
+$("rule").addEventListener("input", scheduleValidate);
+$("rule").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); backtest(); } });
+$("run").addEventListener("click", backtest);
+
+// A link of the form /?rule=<rule> opens with that rule and runs its
+// backtest, so a rule and its evidence can be shared as a URL.
+const shared = new URLSearchParams(location.search).get("rule");
+if (shared) $("rule").value = shared;
+loadInfo().then(validate).then(() => { if (shared && lastValid) backtest(); });
+loadRules();
+loadSweep();
+</script>
+</body>
+</html>
