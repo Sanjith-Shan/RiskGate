@@ -1,0 +1,35 @@
+# RiskGate model threshold alone (experiment 8, "model threshold alone").
+#
+# One rule: block when the calibrated fraud probability is at least 50%.
+# No review band and no other rules, so experiment 8 can compare it with
+# rules/default.rules (the same block threshold, plus a review band and
+# rules).
+#
+# Chosen on the VALIDATION month only (month 4: 83,571 payments, 2,850
+# fraud) with the backtester's risk_score sweep on the scored table
+# data/cache/table_scored_real.rgt. The test month was not looked at.
+#
+# The choice is by cost, the same accounting experiment 8 uses: a blocked
+# legitimate payment loses its amount, and a missed fraud costs its amount
+# plus a $15 dispute fee. Blocking pays when the fraud probability p exceeds
+# a / (2a + 15), just under 50%, and risk_score is p in percent. On
+# validation, scores sit on the calibration's steps (..., 45, 56, 63, ...),
+# so any cut from 46 to 56 is the same cut. Every step from 63 up is net
+# positive in those terms and every step up to 45 net negative. The step at
+# 56 (81 payments, 57% fraud) is -$1,199 because its fraud is small-ticket;
+# a cut at 63 would gain that on validation, but 50 is the principled
+# break-even and 81 payments are too few to tune to.
+#
+# Validation: 370 blocked, 71.4% fraud, fraud recall 9.3%, FPR 0.13%,
+# fraud-dollar recall 15.0% ($69,189), legitimate dollars blocked 0.36%
+# ($38,299). Net of the above accounting, +$34,849.
+#
+# Not chosen: experiment 1's budget of 1% of legitimate dollars would allow
+# a threshold of 35 (661 blocked, 57.2%, fraud-dollar recall 19.0%, 0.67% of
+# legitimate dollars), but the extra 291 payments it blocks cost more
+# legitimate dollars than they save in fraud (net +$21,231 against
+# +$34,849). The isotonic calibration was fitted on this month, so all of
+# these validation numbers are optimistic.
+#
+# Check this file with:  go run ./cmd/rulecheck -lists rules/lists.json rules/model_only.rules
+block if :risk_score: >= 50

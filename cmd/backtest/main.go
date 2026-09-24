@@ -74,6 +74,7 @@ func (f *tableFlags) register(fs *flag.FlagSet, rows int) {
 	fs.Uint64Var(&f.seed, "seed", 1, "seed for a synthetic table")
 	fs.Float64Var(&f.missing, "missing", 0, "extra missing-value probability in a synthetic table")
 	fs.Float64Var(&f.edge, "edge", 0, "adversarial-value probability in a synthetic table")
+	fs.Func("lists", "JSON file of named lists, such as rules/lists.json (default: built-in sample lists)", loadListsFlag)
 }
 
 func (f *tableFlags) load(out io.Writer) (*backtest.Table, error) {
@@ -93,7 +94,25 @@ func (f *tableFlags) load(out io.Writer) (*backtest.Table, error) {
 	return t, nil
 }
 
-func env() rules.Env { return rules.Env{Catalog: schema.Default(), Lists: rules.SampleLists()} }
+// ruleLists are the named lists rules may use: rules.SampleLists unless a
+// command was given -lists (the service's lists file, rules/lists.json).
+var ruleLists = rules.SampleLists()
+
+func env() rules.Env { return rules.Env{Catalog: schema.Default(), Lists: ruleLists} }
+
+// loadListsFlag reads a JSON lists file into ruleLists.
+func loadListsFlag(path string) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	l, err := rules.ParseLists(b)
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	ruleLists = l
+	return nil
+}
 
 func parse(fs *flag.FlagSet, args []string) error {
 	fs.SetOutput(io.Discard)

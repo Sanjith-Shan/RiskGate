@@ -1,0 +1,28 @@
+{
+ "split": "valid",
+ "rows": 83571,
+ "fraud": 2850,
+ "flagged": 370,
+ "flagged_fraud": 264,
+ "precision": 0.7135135135135136,
+ "recall": 0.09263157894736843,
+ "fpr": 0.0013131650995403922,
+ "fraud_dollar_recall": 0.14958170910681348,
+ "legit_dollar_share": 0.0035757749718205783,
+ "allowed_by_rule": 0,
+ "rules": [
+  {
+   "rule": "block if :risk_score: \u003e= 50",
+   "action": "block",
+   "matched": 370,
+   "fraud": 264,
+   "precision": 0.7135135135135136,
+   "fraud_recall": 0.09263157894736843,
+   "legit_fpr": 0.0013131650995403922,
+   "decided": 370,
+   "decided_fraud": 264,
+   "fraud_dollars": 69188.66099999998,
+   "decided_dollar": 69188.66099999998
+  }
+ ]
+}

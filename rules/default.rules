@@ -1,54 +1,88 @@
-# RiskGate starter rule set.
+# RiskGate production rule set: the model plus rules (experiment 8,
+# "model plus rules").
 #
 # Evaluation follows Radar's documented order: allow rules first (an allowed
 # payment skips block and review), then block, then review. A payment no
 # rule matches is allowed. Shadow rules run on every payment and are logged,
 # never enforced; GET /v1/rules/shadow compares them with their backtest.
 #
-# EVERY THRESHOLD BELOW IS A PLACEHOLDER. They are plausible starting points,
-# not tuned values. Tune them on the VALIDATION month only (the page's
-# backtest and the risk_score sweep, restricted to that month), never on the
-# test month, and record the chosen values and why.
+# Tuned on the VALIDATION month only (month 4, 83,571 payments, 2,850 fraud,
+# $462,548 fraud and $10,710,804 legitimate dollars), on the scored table
+# data/cache/table_scored_real.rgt, with the backtester's threshold sweep and
+# incremental backtests. The test month was not looked at. The log, with
+# every candidate tried, is results/rules_default/TUNING.md.
+#
+# Caveats that apply to every number below: risk_score's isotonic
+# calibration was fitted on this same month and the model early-stopped on
+# it, so validation numbers are optimistic. "Incremental" means what the rule
+# changes given all the other live rules in this file (a leave-one-out
+# backtest), which is what the rule is worth, as opposed to what it matches.
+#
+# The whole set on validation: 2,263 payments flagged (370 blocked, 1,893
+# reviewed), precision 39.1%, fraud recall 31.1%, FPR 1.71%, fraud-dollar
+# recall 35.7%. Of legitimate dollars, 0.36% blocked and 2.05% reviewed.
 #
 # Check this file with:  go run ./cmd/rulecheck -lists rules/lists.json rules/default.rules
+#
+# No allow rule. The starter allow rule (trusted domain, customer seen for
+# 30+ days, risk_score < 20) matched 11,978 payments at 1.3% fraud but
+# changed no decision: nothing else here fires below risk_score 15. The
+# rules-baseline allow rule (customer seen 90+ days ago, idle 7+ days) would
+# have released 7 flagged payments, 4 of them fraud. Neither helps.
 
-# --- Allow: long-standing, low-risk customers on trusted mail domains -------
-# A customer (the approximate uid) seen for 30+ days on a mainstream domain
-# with a low model score. PLACEHOLDER: 30 days, risk_score < 20.
-allow if :purchaser_email_domain: in @trusted_domains and :uid_seconds_since_first: > 2592000 and :risk_score: < 20
+# --- Block: the model is more likely right than wrong -----------------------
+# risk_score is a calibrated fraud probability in percent. Blocking loses the
+# payment's amount if it is legitimate and saves the amount plus a $15
+# dispute fee if it is fraud, so blocking pays when p > a / (2a + 15), just
+# under 50%. Validation scores sit on the calibration's steps (..., 45, 56,
+# 63, ...), so any cut from 46 to 56 is the same cut here. In those dollar
+# terms every step from 63 up is net positive and every step up to 45 net
+# negative; the step at 56 (81 payments, 57% fraud) is -$1,199, because its
+# fraud is small-ticket. Cutting at 63 instead would gain that $1,199 on
+# validation; 50 is kept because it is the principled break-even and 81
+# payments are too few to tune to.
+# Validation: 370 matched, 71.4% fraud; incremental (review -> block) 370,
+# $69,189 fraud and $38,299 legitimate dollars (0.36% of legitimate dollars).
+block if :risk_score: >= 50
 
-# --- Block: the model is confident ------------------------------------------
-# PLACEHOLDER: pick the cut-off from the risk_score sweep on validation.
-block if :risk_score: >= 90
+# --- Review: the model says one in four or more -----------------------------
+# In Clearinghouse, review lets the payment through and holds the payout,
+# so it costs an analyst's time and a delay, not the sale. 25 keeps every
+# score step in the queue at 25% fraud or more, and with the product C rule
+# below the queue is 1,893 payments a month (2.3%, about 63 a day). Validation: 2,153 matched, 39.1%; incremental 1,461 payments,
+# 28.7% fraud, $77,306 fraud and $195,990 legitimate dollars.
+review if :risk_score: >= 25
 
-# --- Block: card testing -----------------------------------------------------
-# Many different cards tried on one device in a day, the classic
-# card-testing signature. PLACEHOLDER: > 5 cards.
-block if :distinct_cards_per_device_24h: > 5
+# --- Review: product C over $50 that the model already half-suspects -------
+# Product C is 10% of payments and 38% of fraud, and nearly every product C
+# payment has no billing_region, so the customer (uid) features the model
+# uses elsewhere are missing there. Within risk_score 15-24, product C over
+# $50 is 39% fraud, well above the review band's 25% edge. Validation: 531
+# matched, 53.7%; incremental 110 payments, 39.1% fraud (43), $3,820 fraud
+# and $6,746 legitimate dollars.
+review if :product_code: = "C" and :amount: > 50 and :risk_score: >= 15
 
-# --- Block: velocity burst on one card --------------------------------------
-# A burst of payments on one card in an hour, at well above the card's usual
-# amount. PLACEHOLDER: >= 8 payments, 3x the 7-day mean.
-block if :card_txn_count_1h: >= 8 and :amount: > 3 * :card_mean_amount_7d:
-
-# --- Block: throwaway mail domains with a large amount ----------------------
-# PLACEHOLDER: $500.
-block if :purchaser_email_domain: in @disposable_domains and :amount: > 500
-
-# --- Review: anonymous.com with a large amount, or an unusual spend --------
-# PLACEHOLDER: $300, risk_score 50, 5x the customer's 7-day mean.
-review if :purchaser_email_domain: = "anonymous.com" and :amount: > 300
-review if :risk_score: >= 50
-review if :uid_amount_ratio_7d: > 5 and :amount: > 200
-
-# --- Review: product C with no device information --------------------------
-# Product C is the dataset's highest-fraud product code, and missing device
-# data removes a signal the model leans on. is_missing makes the intent
-# explicit: a comparison with a missing value never matches.
-review if :product_code: = "C" and is_missing(:device_info:) and :risk_score: >= 30
+# Dropped after the validation backtest (incremental precision given the
+# rules above, against a 25% bar for review and a net-positive bar for
+# block; details in TUNING.md):
+#   block  distinct_cards_per_device_24h > 5     5.8% (device_info is a model
+#                                                 string, not a device)
+#   block  card 1 h count >= 8 and 3x 7-day mean 6.5%
+#   block  disposable domain and amount > 500    1.6%
+#   review anonymous.com and amount > 300        1.3% (below the 3.4% base rate)
+#   review uid amount ratio > 5 and amount > 200 1.4%
+#   review C, no device_info, risk_score >= 30   0 changed (the >= 25 band
+#                                                 covers it); at >= 15 it adds
+#                                                 22.1% given the C rule above
 
 # --- Shadow: candidates being measured before they go live -----------------
-# Many cards on one purchaser email domain in a day. PLACEHOLDER: > 20.
-shadow review if :distinct_cards_per_email_24h: > 20 and not :purchaser_email_domain: in @trusted_domains
-# A lower model cut-off than the live block rule. PLACEHOLDER: 80.
-shadow block if :risk_score: >= 80
+# Promote the product C rule's upper half from review to block. On
+# validation it would move 322 reviewed payments to block, 49.4% fraud,
+# $14,954 fraud against $16,743 legitimate dollars: break-even, so measure
+# it on live traffic before deciding.
+shadow block if :product_code: = "C" and :amount: > 50 and :risk_score: >= 25
+
+# Discover cards the model scores 15-24. Validation: 47 incremental
+# payments, 27.7% fraud (13), $4,854 fraud and $10,711 legitimate dollars.
+# Just over the review bar on 13 frauds, which is too few to trust.
+shadow review if :card_network: = "discover" and :risk_score: >= 15
