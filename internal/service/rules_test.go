@@ -184,3 +184,30 @@ func labelFor(l int8) *PaymentLabel {
 	}
 	return &PaymentLabel{Disputes: map[string]*DisputeState{"dp": {Reason: "fraudulent", Status: status, Closed: l == backtest.Legit}}}
 }
+
+// Every endpoint answers an oversized body with 413 body_too_large, as
+// /v1/assess and PUT /v1/rules do, not with a JSON syntax error.
+func TestRulesTestBodyTooLarge(t *testing.T) {
+	s := newTestEnv(t).start(t)
+	defer s.Close()
+	body := []byte(`{"rule": "block if :amount: > 1", "validate_only": true, "pad": "` + strings.Repeat("x", maxTestBody) + `"}`)
+	rec := do(t, s.Handler(), http.MethodPost, "/v1/rules/test", body)
+	var e struct{ Error struct{ Code string } }
+	decodeJSON(t, rec.Body.Bytes(), &e)
+	if rec.Code != http.StatusRequestEntityTooLarge || e.Error.Code != "body_too_large" {
+		t.Fatalf("got %d %s", rec.Code, rec.Body)
+	}
+}
+
+// A JSON body without "rules" (for example {"rule": ...}, the spelling
+// /v1/rules/test takes) is a client error. Deploying it as an empty rule
+// set would switch every rule off.
+func TestRulesPutJSONWithoutRules(t *testing.T) {
+	s := newTestEnv(t).start(t)
+	defer s.Close()
+	before := s.RulesetVersion()
+	rec := do(t, s.Handler(), http.MethodPut, "/v1/rules", []byte(`{"rule": "block if :amount: > 1"}`), "Content-Type", "application/json")
+	if rec.Code != http.StatusBadRequest || s.RulesetVersion() != before || len(s.rules.current().Set.Rules) == 0 {
+		t.Fatalf("got %d %s; live version %d, was %d", rec.Code, rec.Body, s.RulesetVersion(), before)
+	}
+}

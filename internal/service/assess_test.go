@@ -2,12 +2,15 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"math"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Sanjith-Shan/RiskGate/internal/data"
 	"github.com/Sanjith-Shan/RiskGate/internal/features"
@@ -243,5 +246,32 @@ func TestAppendStringMatchesEncodingJSON(t *testing.T) {
 	}
 	if string(appendFloat(nil, math.NaN())) != "null" || string(appendFloat(nil, math.Inf(1))) != "null" {
 		t.Error("NaN and Inf must be null")
+	}
+}
+
+// A panic while assessing (net/http recovers it and carries on) must
+// release the idempotency claim. Otherwise every retry of the key waits
+// out its deadline and gets a 503, and the entry, never ready, is never
+// expired and stops the expiry of everything claimed after it.
+func TestIdempotencyClaimReleasedOnPanic(t *testing.T) {
+	s := newTestEnv(t).start(t)
+	defer s.Close()
+	p := testStream(1, 4)[0]
+	live := s.rules.current()
+	s.rules.cur.Store(&ruleVersion{Version: live.Version}) // no rule set: evaluating panics
+	func() {
+		defer func() { _ = recover() }()
+		do(t, s.Handler(), http.MethodPost, "/v1/assess", p.body(), headerIdempotencyKey, "k:1")
+	}()
+	s.rules.cur.Store(live)
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/v1/assess", bytes.NewReader(p.body()))
+	req.Header.Set(headerIdempotencyKey, "k:1")
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("retry after a panic: %d %s", rec.Code, rec.Body)
 	}
 }

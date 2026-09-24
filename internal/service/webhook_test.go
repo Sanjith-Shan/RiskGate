@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -167,5 +168,51 @@ func TestLabelLogTornLine(t *testing.T) {
 	}
 	if c := ls.Counts(); c.Fraud != 2 {
 		t.Fatalf("counts %+v", c)
+	}
+}
+
+// A label whose line reached the log but whose fsync failed was not
+// acknowledged, and Clearinghouse will redeliver it. The next label must
+// not reuse its sequence number: replay skips any record whose seq is not
+// above the last one applied, so an acknowledged label would be lost on
+// restart.
+func TestLabelLogFailedSyncDoesNotReuseSeq(t *testing.T) {
+	path := t.TempDir() + "/labels.jsonl"
+	ls, err := OpenLabelStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := ls.log
+	// A pipe takes the write but cannot be fsynced.
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ls.log = pw
+	e1, _ := webhook.ParseEvent(eventBody("evt_1", webhook.TypeChargeDisputeCreated, 1, dispute("dp1", "txn_1", "fraudulent", "")))
+	if err := ls.Record(e1); err == nil {
+		t.Skip("fsync on a pipe succeeded on this platform")
+	}
+	pw.Close()
+	written, _ := io.ReadAll(pr)
+	pr.Close()
+	if _, err := file.Write(written); err != nil { // the write that did reach the disk
+		t.Fatal(err)
+	}
+	ls.log = file
+
+	e2, _ := webhook.ParseEvent(eventBody("evt_2", webhook.TypeChargeDisputeCreated, 2, dispute("dp2", "txn_2", "fraudulent", "")))
+	if err := ls.Record(e2); err != nil {
+		t.Fatal(err)
+	}
+	ls.Close()
+
+	ls, _ = OpenLabelStore(path)
+	defer ls.Close()
+	if err := ls.replayLog(); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := ls.Label("txn_2"); !ok {
+		t.Fatal("acknowledged label for txn_2 lost on restart")
 	}
 }
