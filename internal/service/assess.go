@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
@@ -41,6 +42,13 @@ const (
 
 	// assessmentIDLen is len("asmt_") + 8 hex boot id + 16 hex sequence.
 	assessmentIDLen = 5 + 8 + 16
+
+	// DefaultMaxFutureSkew is how far ahead a payment's created may be; see
+	// checkCreated.
+	DefaultMaxFutureSkew = 24 * time.Hour
+	// maxCreatedUnix is 3000-01-01 in Unix seconds. A later created is
+	// almost certainly milliseconds.
+	maxCreatedUnix = 32503680000
 )
 
 type assessRequest struct {
@@ -134,9 +142,14 @@ func (s *Service) serveAssess(w http.ResponseWriter, r *http.Request, start time
 	}
 	// Settle the claim in a defer so that a panic (which net/http recovers)
 	// abandons it too; otherwise every retry of the key would wait out its
-	// deadline, and the entry, never ready, would never expire.
+	// deadline, and the entry, never ready, would never expire. The cut
+	// (see Snapshot) is released after the claim is settled, as defers run
+	// last in, first out. It is shared, and held only for the pipeline and
+	// the response write, which goes to net/http's buffer.
 	code := http.StatusInternalServerError
 	if claim != nil {
+		s.cut.RLock()
+		defer s.cut.RUnlock()
 		defer func() {
 			if code == http.StatusOK {
 				s.idem.finish(claim, append([]byte(nil), b.out...))
@@ -164,6 +177,9 @@ func (s *Service) assessBody(w http.ResponseWriter, r *http.Request, b *assessBu
 	t, err := s.txnOf(&b.req)
 	if err != nil {
 		return writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	if code, msg := s.checkCreated(b.req.Created); code != "" {
+		return writeError(w, http.StatusBadRequest, code, msg)
 	}
 
 	a := s.assess(&t, b)
@@ -227,6 +243,34 @@ func (s *Service) txnOf(req *assessRequest) (data.Txn, error) {
 		t.ID = id // ties in event time only matter to Replay, but keep it faithful
 	}
 	return t, nil
+}
+
+// checkCreated refuses an event time far in the future before it reaches
+// the velocity state. There it would become its keys' latest time: every
+// later payment on those keys, including shared ones such as an email
+// domain, would be recorded at it and stay in every window until event time
+// caught up. created must be in Unix seconds before the year 3000, and at
+// most maxSkew ahead of the later of the latest created accepted so far and
+// the wall clock. Event time is not wall time (a replay runs in the past, a
+// simulation may run ahead), so neither reference alone will do: the wall
+// clock bounds the first payment, which has no other reference, and keeps a
+// service that was idle for longer than maxSkew from refusing everything;
+// the latest accepted created bounds a clock running ahead. Replay order is
+// always accepted.
+func (s *Service) checkCreated(created int64) (code, msg string) {
+	if created > maxCreatedUnix {
+		return "created_out_of_range", fmt.Sprintf("created %d is after the year 3000; send Unix seconds, not milliseconds", created)
+	}
+	latest := s.latestCreated.Load()
+	if s.maxSkew >= 0 {
+		if ref := max(latest, s.now().Unix()); created > ref+s.maxSkew {
+			return "created_in_future", fmt.Sprintf("created %d is more than %ds ahead of the latest accepted payment (%d) and the clock", created, s.maxSkew, latest)
+		}
+	}
+	for created > latest && !s.latestCreated.CompareAndSwap(latest, created) {
+		latest = s.latestCreated.Load()
+	}
+	return "", ""
 }
 
 // assess is the pipeline: features (score before update, atomic per key),
