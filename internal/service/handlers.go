@@ -320,6 +320,9 @@ func (s *Service) handleInfo(w http.ResponseWriter, r *http.Request) {
 		"backtests":       s.bt != nil,
 		"attributes":      s.attributes(),
 	}
+	if s.scorer != nil {
+		info["model_sha256"] = s.scorer.SHA256()
+	}
 	if s.bt != nil {
 		lo, hi := s.bt.base.TimeSpan()
 		info["table_rows"] = s.bt.base.N
@@ -361,6 +364,9 @@ func (s *Service) gauges() []gauge {
 		{name: "riskgate_webhook_dedupe_entries", help: "Webhook event ids remembered.", typ: "gauge", value: float64(s.dedupe.Len())},
 		{name: "riskgate_webhook_dedupe_evictions_total", help: "Event ids forgotten early because the deduper was full.", typ: "counter", value: float64(s.dedupe.Evictions())},
 		{name: "riskgate_idempotency_entries", help: "Assess responses held for idempotent replay.", typ: "gauge", value: float64(s.idem.len())},
+	}
+	if s.scorer != nil {
+		g = append(g, gauge{name: "riskgate_model_info", help: "The loaded model, by SHA-256 of its directory (model.DirSHA256).", typ: "gauge", labels: `{sha256="` + s.scorer.SHA256() + `"}`, value: 1})
 	}
 	if at := s.lastSnapshot.Load(); at > 0 {
 		age := s.now().Sub(time.Unix(0, at)).Seconds()

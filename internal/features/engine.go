@@ -216,6 +216,11 @@ func (e *Engine) fillRaw(t *data.Txn, row schema.Row) {
 //	mean  = sum_7d / count_7d, missing when count_7d is 0
 //	ratio = amount / mean,     missing when mean is missing or not positive
 //	seconds_since_first/last:  missing when the key is unseen
+//
+// A late payment (earlier than the key's latest, which only happens online)
+// is measured from the key's latest time, where the state records it, so
+// seconds_since_last is 0 rather than negative, a value training never
+// sees. Replay feeds payments in order, so offline rows are unaffected.
 func (e *Engine) fillEntity(ent Entity, a *Aggregates, t *data.Txn, row schema.Row) {
 	s := &e.vel[ent]
 	for w := range NumWindows {
@@ -233,7 +238,8 @@ func (e *Engine) fillEntity(ent Entity, a *Aggregates, t *data.Txn, row schema.R
 	row.Num[s.ratio] = ratio
 	first, last := math.NaN(), math.NaN()
 	if a.Seen {
-		first, last = float64(t.DT-a.First), float64(t.DT-a.Last)
+		now := max(t.DT, a.Last)
+		first, last = float64(now-a.First), float64(now-a.Last)
 	}
 	row.Num[s.sinceFirst] = first
 	row.Num[s.sinceLast] = last

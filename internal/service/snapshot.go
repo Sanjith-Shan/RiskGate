@@ -35,13 +35,16 @@ import (
 //
 // Consistency: a snapshot taken at shutdown, after the HTTP server has
 // drained, is a single point in time, and that is what the restart tests
-// check. Periodic snapshots run under live traffic: each part is internally
-// consistent (each state shard is locked while it is written), but a
-// request in flight may be in the velocity state and not yet in the
-// idempotency store, or the reverse. Making them agree would take a global
-// lock on the payment path, which is exactly what sharding exists to avoid.
-// The cost is bounded by the requests in flight at the instant of a crash,
-// and those were never acknowledged, so Clearinghouse retries them anyway.
+// check. Periodic snapshots run under live traffic. The velocity state is
+// serialized first, each shard under its own lock, and the idempotency
+// store is copied after it inside a brief barrier (Service.cut): an assess
+// with an Idempotency-Key holds the barrier shared from its velocity update
+// until its answer is stored, and the snapshot holds it exclusively only
+// while it copies the store. So a payment in the saved state always has its
+// answer saved too, and a retry after a restart is never counted twice. A
+// payment answered while the state was being serialized may be in the
+// store and missing from the state, exactly like one answered just after
+// the snapshot: a restart loses it from the velocity windows either way.
 
 const snapshotMagic = "RGSNAP01\n"
 
@@ -86,9 +89,15 @@ func (s *Service) writeSnapshot(path string) error {
 	cur := s.rules.current()
 	meta.Rules.Version, meta.Rules.Text, meta.Rules.Lists, meta.Rules.DeployedAt = cur.Version, cur.Text, cur.ListsJSON, cur.DeployedAt
 	meta.Rules.Shadows = s.rules.shadowRecords()
-	meta.Idempotency = s.idem.snapshot()
 	meta.Dedupe = s.dedupe.Snapshot()
 	meta.Labels = s.labels.snapshot()
+	var velocity bytes.Buffer
+	if err := s.engine.State().Snapshot(&velocity); err != nil {
+		return err
+	}
+	s.cut.Lock() // after the state: see Consistency above
+	meta.Idempotency = s.idem.snapshot()
+	s.cut.Unlock()
 	metaJSON, err := json.Marshal(&meta)
 	if err != nil {
 		return err
@@ -106,7 +115,7 @@ func (s *Service) writeSnapshot(path string) error {
 		if _, err := mw.Write(metaJSON); err != nil {
 			return err
 		}
-		if err := s.engine.State().Snapshot(mw); err != nil {
+		if _, err := mw.Write(velocity.Bytes()); err != nil {
 			return err
 		}
 		_, err := w.Write(binary.LittleEndian.AppendUint32(nil, crc.Sum32()))

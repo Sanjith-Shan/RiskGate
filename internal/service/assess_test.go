@@ -93,6 +93,59 @@ func TestAssessRejectsBadRequests(t *testing.T) {
 	}
 }
 
+// A created far ahead of event time is refused before it reaches the
+// velocity state, where it would become its keys' latest time and pin every
+// later payment on them to it. Event time need not be wall time: the bound
+// is the later of the latest accepted payment and the clock.
+func TestAssessRejectsFutureCreated(t *testing.T) {
+	env := newTestEnv(t)
+	stream := testStream(3, 21)
+	clock := &fixedClock{t: time.Unix(stream[0].Created, 0)}
+	cfg := env.config(t)
+	cfg.Now = clock.now
+	s, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	check := func(p payment, want string) {
+		t.Helper()
+		rec := do(t, s.Handler(), http.MethodPost, "/v1/assess", p.body())
+		var e struct{ Error struct{ Code string } }
+		_ = json.Unmarshal(rec.Body.Bytes(), &e)
+		if want == "" && rec.Code != 200 || want != "" && (rec.Code != 400 || e.Error.Code != want) {
+			t.Fatalf("created %d: %d %s, want %q", p.Created, rec.Code, rec.Body, want)
+		}
+	}
+	shifted := func(p payment, by int64) payment { p.Created += by; return p }
+
+	// Nothing accepted yet: the clock is the reference.
+	check(shifted(stream[0], 2*86400), "created_in_future")
+	check(stream[0], "")
+	// Milliseconds are refused whatever the reference.
+	check(shifted(stream[1], stream[1].Created*999), "created_out_of_range")
+	// A simulated clock running ahead of the wall clock: the latest
+	// accepted payment is the reference.
+	clock.t = time.Unix(0, 0)
+	bogus := shifted(stream[1], 25*3600)
+	check(bogus, "created_in_future")
+	if n := cardCount(s, bogus.Fields["card1"].(float64), bogus.Created+1); n != 0 {
+		t.Fatalf("refused payment reached the velocity state (count %v)", n)
+	}
+	check(shifted(stream[1], 23*3600), "")
+	check(stream[2], "") // late, but within the bound
+
+	// A negative skew turns the bound off; the range check stays.
+	cfg = newTestEnv(t).config(t)
+	cfg.MaxFutureSkew = -1
+	if s, err = New(cfg); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	check(shifted(stream[0], 10*365*86400), "")
+	check(shifted(stream[0], stream[0].Created*999), "created_out_of_range")
+}
+
 // risk_fields.TransactionAmt is the exact dollar amount and wins over the
 // rounded cents; without it the cents are used.
 func TestAssessAmountPrecedence(t *testing.T) {

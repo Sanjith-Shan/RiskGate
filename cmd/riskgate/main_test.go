@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"flag"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -49,5 +50,27 @@ func TestAuditCommandNeedsHistory(t *testing.T) {
 	var out bytes.Buffer
 	if _, err := audit([]string{"-rules-history", t.TempDir(), "-log", "/nonexistent"}, &out); err == nil {
 		t.Fatal("audit with an empty history should fail")
+	}
+}
+
+// -max-future-skew 0 turns the bound off; in service.Config, 0 is the
+// default and off is negative.
+func TestMaxFutureSkewZeroIsOff(t *testing.T) {
+	for _, tc := range []struct {
+		flag string
+		want time.Duration
+	}{{"0", -1}, {"2h", 2 * time.Hour}} {
+		fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+		c := serveFlags(fs)
+		if err := fs.Parse([]string{"-max-future-skew", tc.flag, "-snapshot-dir", "", "-rules", "", "-lists", ""}); err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := buildConfig(c, slog.New(slog.DiscardHandler))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.MaxFutureSkew != tc.want {
+			t.Errorf("-max-future-skew %s: Config.MaxFutureSkew %v, want %v", tc.flag, cfg.MaxFutureSkew, tc.want)
+		}
 	}
 }

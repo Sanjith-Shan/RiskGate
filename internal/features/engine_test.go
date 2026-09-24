@@ -271,6 +271,27 @@ func TestLateEventIsClamped(t *testing.T) {
 	}
 }
 
+// A late payment is scored at the time it is recorded, the key's latest,
+// so its features are those of a payment at that time: never a negative
+// seconds_since_last, which training never sees, and no window counting an
+// event after the payment's own time.
+func TestLateEventIsScoredAtKeyLatest(t *testing.T) {
+	txns := []data.Txn{txn(1, 1000, 1, 7), txn(2, 5000, 2, 7), txn(3, 4000, 4, 7)}
+	for _, k := range stateKinds {
+		e := newEngine(t, k.new())
+		row := e.NewRow()
+		for i := range txns {
+			e.ScoreAndUpdate(&txns[i], row)
+		}
+		if last, first := num(row, "card_seconds_since_last"), num(row, "card_seconds_since_first"); last != 0 || first != 4000 {
+			t.Errorf("%s: seconds since last %v, first %v; want 0 and 4000", k.name, last, first)
+		}
+		if got := num(row, "card_txn_count_1h"); k.exact && got != 1 {
+			t.Errorf("%s: 1h count %v, want 1 (the payment at 1000 is over an hour before 5000)", k.name, got)
+		}
+	}
+}
+
 func TestScoreThenUpdateEqualsScoreAndUpdate(t *testing.T) {
 	txns := synthetic(t, 5000, 5)
 	for _, k := range stateKinds {

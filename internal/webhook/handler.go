@@ -14,8 +14,14 @@ import (
 const DefaultMaxBodyBytes = 256 << 10
 
 // EventFunc processes one verified, first-seen event. Returning an error
-// makes the handler answer 500 so Clearinghouse retries the delivery.
+// makes the handler answer 500 so Clearinghouse retries the delivery, or 503
+// if the error wraps ErrUnavailable.
 type EventFunc func(ctx context.Context, e *Event) error
+
+// ErrUnavailable is for an EventFunc that cannot take events at all right
+// now, for example because the service is shutting down. The handler
+// answers 503, and Clearinghouse retries the delivery.
+var ErrUnavailable = errors.New("webhook: receiver unavailable")
 
 // Handler is an http.Handler for POST /v1/webhooks/clearinghouse.
 //
@@ -28,6 +34,7 @@ type EventFunc func(ctx context.Context, e *Event) error
 //	409 the same event is being processed by a concurrent delivery (retry later)
 //	413 body over MaxBodyBytes
 //	500 the callback failed (retry later)
+//	503 the callback returned ErrUnavailable (retry later)
 type Handler struct {
 	Verifier *Verifier
 	Deduper  *Deduper
@@ -103,6 +110,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	if err := h.OnEvent(r.Context(), event); err != nil {
+		if errors.Is(err, ErrUnavailable) {
+			logger.Warn("webhook event refused", "event", event.ID, "type", event.Type, "error", err)
+			writeJSON(w, http.StatusServiceUnavailable, "unavailable")
+			return
+		}
 		logger.Error("webhook event failed", "event", event.ID, "type", event.Type, "error", err)
 		writeJSON(w, http.StatusInternalServerError, "processing_failed")
 		return

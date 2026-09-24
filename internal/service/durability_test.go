@@ -3,16 +3,21 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/Sanjith-Shan/RiskGate/internal/model"
 	"github.com/Sanjith-Shan/RiskGate/internal/schema"
 	"github.com/Sanjith-Shan/RiskGate/internal/webhook"
 )
@@ -116,6 +121,79 @@ func TestAuditReplaysEveryDecision(t *testing.T) {
 	}
 }
 
+// The service reports the SHA-256 of the model directory it loaded, logs it
+// with every decision, and the audit refuses to replay a log with another
+// model.
+func TestModelIdentity(t *testing.T) {
+	// Reproducible from a shell in the model directory:
+	// shasum -a 256 model.txt encoder.json calibration.json metadata.json | shasum -a 256
+	var sums bytes.Buffer
+	for _, name := range []string{model.ModelFile, model.EncoderFile, model.CalibrationFile, model.MetadataFile} {
+		b, err := os.ReadFile(filepath.Join("testdata", "model", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Fprintf(&sums, "%x  %s\n", sha256.Sum256(b), name)
+	}
+	want := fmt.Sprintf("%x", sha256.Sum256(sums.Bytes()))
+
+	env := newTestEnv(t)
+	if got := env.scorer.SHA256(); got != want {
+		t.Fatalf("scorer hash %s, want %s", got, want)
+	}
+	s := env.start(t)
+	var info struct {
+		ModelSHA256 string `json:"model_sha256"`
+	}
+	decodeJSON(t, do(t, s.Handler(), http.MethodGet, "/v1/info", nil).Body.Bytes(), &info)
+	if info.ModelSHA256 != want {
+		t.Errorf("/v1/info model_sha256 %q, want %s", info.ModelSHA256, want)
+	}
+	if m := do(t, s.Handler(), http.MethodGet, "/metrics", nil).Body.String(); !strings.Contains(m, `riskgate_model_info{sha256="`+want+`"} 1`) {
+		t.Error("/metrics lacks riskgate_model_info")
+	}
+	assess(t, s, testStream(1, 23)[0])
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cfg := env.config(t)
+	logBytes, err := os.ReadFile(cfg.DecisionLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var e struct {
+		ModelSHA256 string `json:"model_sha256"`
+	}
+	decodeJSON(t, logBytes, &e)
+	if e.ModelSHA256 != want {
+		t.Fatalf("decision log model_sha256 %q, want %s", e.ModelSHA256, want)
+	}
+
+	// The same model with metadata.json changed by one byte is another model.
+	dir := t.TempDir()
+	for _, name := range []string{model.ModelFile, model.EncoderFile, model.CalibrationFile, model.MetadataFile} {
+		b, _ := os.ReadFile(filepath.Join("testdata", "model", name))
+		if name == model.MetadataFile {
+			b = append(b, '\n')
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	other, err := model.LoadScorer(dir, schema.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	history, err := LoadRuleHistory(cfg.RulesHistoryDir, schema.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Audit(bytes.NewReader(logBytes), schema.Default(), other, history)
+	if err == nil || !strings.Contains(err.Error(), want) || !strings.Contains(err.Error(), other.SHA256()) {
+		t.Fatalf("audit with another model: %v", err)
+	}
+}
+
 // Restored state equals the state at shutdown, part by part.
 func TestSnapshotRestoresState(t *testing.T) {
 	env := newTestEnv(t)
@@ -212,6 +290,62 @@ func TestRestartMatchesUninterruptedRun(t *testing.T) {
 	}
 }
 
+// stallWriter holds a request inside its response write until released.
+type stallWriter struct {
+	*httptest.ResponseRecorder
+	entered, release chan struct{}
+}
+
+func (w *stallWriter) Write(b []byte) (int, error) {
+	close(w.entered)
+	<-w.release
+	return w.ResponseRecorder.Write(b)
+}
+
+// A periodic snapshot is a consistent cut of the velocity state and the
+// idempotency store. A snapshot that caught a payment in the state but not
+// its stored answer would, after a crash, count a Clearinghouse retry of it
+// a second time.
+func TestSnapshotUnderTrafficIsConsistent(t *testing.T) {
+	env := newTestEnv(t)
+	s := env.start(t)
+	defer s.Close()
+	p := testStream(1, 22)[0]
+	key := p.ID + ":1"
+	w := &stallWriter{httptest.NewRecorder(), make(chan struct{}), make(chan struct{})}
+	req := httptest.NewRequest(http.MethodPost, "/v1/assess", bytes.NewReader(p.body()))
+	req.Header.Set(headerIdempotencyKey, key)
+	served := make(chan struct{})
+	go func() {
+		defer close(served)
+		s.Handler().ServeHTTP(w, req)
+	}()
+	<-w.entered // p is in the velocity state; its answer is not stored yet
+	snapped := make(chan error, 1)
+	go func() { snapped <- s.Snapshot() }()
+	select {
+	case err := <-snapped: // did not wait for the request
+		snapped <- err
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(w.release)
+	<-served
+	if err := <-snapped; err != nil {
+		t.Fatal(err)
+	}
+
+	// Crash (no Close) and restart from that snapshot; Clearinghouse retries.
+	r := env.start(t)
+	defer r.Close()
+	rec := do(t, r.Handler(), http.MethodPost, "/v1/assess", p.body(), headerIdempotencyKey, key)
+	if rec.Code != 200 || rec.Header().Get("Idempotent-Replayed") != "true" {
+		t.Errorf("retry after restart was assessed again: %d %s", rec.Code, rec.Body)
+	}
+	if n := cardCount(r, p.Fields["card1"].(float64), p.Created+1); n != 1 {
+		t.Fatalf("payment counted %v times after restart, want 1", n)
+	}
+}
+
 // A snapshot of another state configuration is refused rather than
 // silently dropped.
 func TestSnapshotMismatchRefused(t *testing.T) {
@@ -268,7 +402,7 @@ func TestDecisionLogDropsInsteadOfBlocking(t *testing.T) {
 		t.Fatal(err)
 	}
 	cat := schema.Default()
-	l := newDecisionLog(w, cat, nil, 0, 4, time.Hour)
+	l := newDecisionLog(w, cat, nil, "", 0, 4, time.Hour)
 	const n = 5000
 	start := time.Now()
 	for range n {
@@ -290,5 +424,38 @@ func TestDecisionLogDropsInsteadOfBlocking(t *testing.T) {
 	written, dropped, _, _ = l.stats()
 	if written+dropped != n {
 		t.Fatalf("written %d + dropped %d != %d", written, dropped, n)
+	}
+}
+
+// Shutdown can close the decision log while handlers that outlived the
+// drain timeout are still logging. Their records are dropped and counted;
+// nothing panics.
+func TestDecisionLogPutRacingClose(t *testing.T) {
+	cat := schema.Default()
+	for range 50 {
+		f, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		l := newDecisionLog(f, cat, nil, "", 0, 1024, time.Hour)
+		const writers, n = 4, 2000
+		var wg sync.WaitGroup
+		for range writers {
+			wg.Go(func() {
+				for range n {
+					l.put(l.get())
+				}
+			})
+		}
+		for w, d, _, _ := l.stats(); w+d == 0; w, d, _, _ = l.stats() {
+			runtime.Gosched() // close mid-stream
+		}
+		if err := l.Close(); err != nil {
+			t.Fatal(err)
+		}
+		wg.Wait()
+		if written, dropped, _, _ := l.stats(); written+dropped != writers*n {
+			t.Fatalf("written %d + dropped %d != %d", written, dropped, writers*n)
+		}
 	}
 }
