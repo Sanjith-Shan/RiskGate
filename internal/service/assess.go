@@ -132,14 +132,20 @@ func (s *Service) serveAssess(w http.ResponseWriter, r *http.Request, start time
 		}
 		claim = owned
 	}
-	code := s.assessBody(w, r, b, start)
+	// Settle the claim in a defer so that a panic (which net/http recovers)
+	// abandons it too; otherwise every retry of the key would wait out its
+	// deadline, and the entry, never ready, would never expire.
+	code := http.StatusInternalServerError
 	if claim != nil {
-		if code == http.StatusOK {
-			s.idem.finish(claim, append([]byte(nil), b.out...))
-		} else {
-			s.idem.abandon(claim)
-		}
+		defer func() {
+			if code == http.StatusOK {
+				s.idem.finish(claim, append([]byte(nil), b.out...))
+			} else {
+				s.idem.abandon(claim)
+			}
+		}()
 	}
+	code = s.assessBody(w, r, b, start)
 	return code
 }
 
