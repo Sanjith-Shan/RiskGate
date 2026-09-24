@@ -62,7 +62,7 @@ go build -o bin/ ./cmd/riskgate ./cmd/loadgen
 REQS=data/exp5/requests.jsonl
 sed 's/,"is_fraud":[01]}$/}/' "$EXPORT/test_replay.jsonl" >"$REQS"
 
-TABLE=data/cache/table_ieee_exp2.rgt
+TABLE=${TABLE:-data/cache/table_scored_real.rgt}
 if [[ ! -f $TABLE || $TABLE -ot $MODEL/model.txt ]]; then
   bin/riskgate table -data data -model "$MODEL" -out "$TABLE"
 fi
