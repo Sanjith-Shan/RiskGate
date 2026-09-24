@@ -1,0 +1,60 @@
+{
+  "decision_log": "var/exp2/decisions.jsonl",
+  "decision_log_lines": 590540,
+  "offline_rows": 590540,
+  "offline_rows_missing_from_log": 0,
+  "log_lines_not_matched": 0,
+  "unscored_log_lines": 0,
+  "catalog_fields_compared": 53,
+  "model_inputs_compared": 53,
+  "all": {
+    "rows_compared": 590540,
+    "feature_rows_differ": 0,
+    "encoded_rows_differ_from_export_csv": 0,
+    "raw_score_differ": 0,
+    "probability_differ": 0,
+    "risk_score_differ": 0,
+    "offline_replay_vs_export_csv_differ": 0,
+    "max_abs_feature_diff": 0,
+    "max_abs_raw_score_diff": 0
+  },
+  "by_split": {
+    "test": {
+      "rows_compared": 92427,
+      "feature_rows_differ": 0,
+      "encoded_rows_differ_from_export_csv": 0,
+      "raw_score_differ": 0,
+      "probability_differ": 0,
+      "risk_score_differ": 0,
+      "offline_replay_vs_export_csv_differ": 0,
+      "max_abs_feature_diff": 0,
+      "max_abs_raw_score_diff": 0
+    },
+    "train": {
+      "rows_compared": 414542,
+      "feature_rows_differ": 0,
+      "encoded_rows_differ_from_export_csv": 0,
+      "raw_score_differ": 0,
+      "probability_differ": 0,
+      "risk_score_differ": 0,
+      "offline_replay_vs_export_csv_differ": 0,
+      "max_abs_feature_diff": 0,
+      "max_abs_raw_score_diff": 0
+    },
+    "valid": {
+      "rows_compared": 83571,
+      "feature_rows_differ": 0,
+      "encoded_rows_differ_from_export_csv": 0,
+      "raw_score_differ": 0,
+      "probability_differ": 0,
+      "risk_score_differ": 0,
+      "offline_replay_vs_export_csv_differ": 0,
+      "max_abs_feature_diff": 0,
+      "max_abs_raw_score_diff": 0
+    }
+  },
+  "field_mismatch_rows": {},
+  "model_encoder_equals_export_encoder": true,
+  "took": "1m54.676s",
+  "ok": true
+}

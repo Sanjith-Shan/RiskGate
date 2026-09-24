@@ -1,0 +1,135 @@
+{
+  "experiment": 2,
+  "title": "Train/serve parity",
+  "command": "scripts/experiments/exp2.sh",
+  "git_commit": "2e59251316e7bfe67102862b9f942e05896214a4",
+  "started": "2026-09-23T23:33:10Z",
+  "finished": "2026-09-23T23:40:41Z",
+  "machine": {
+    "cpu": "Apple M3 Pro",
+    "performance_cores": "6",
+    "efficiency_cores": "6",
+    "logical_cpus": "12",
+    "os": "macOS-26.5.1-arm64-arm-64bit",
+    "go_version": "go1.26.5",
+    "gomaxprocs": "default (= logical CPUs) for every process"
+  },
+  "load_average": {
+    "start": "20.56 27.84 41.46",
+    "after_model_parity": "23.33 27.96 41.18",
+    "after_service_replay": "12.13 22.35 36.41",
+    "end": "15.71 20.22 32.01"
+  },
+  "data_provenance": {
+    "dataset": "IEEE-CIS Fraud Detection (Kaggle), real Vesta e-commerce transactions, train_transaction.csv + train_identity.csv",
+    "export": "data/export_real",
+    "export_csv_sha256": "91fac348dc4abb1cc2281f42a90d72138473c0ea55e7f05d2ed5bb2b1982128a",
+    "model": "models/ieee",
+    "model_txt_sha256": "787a2e4e548406a071d97758021c481a2eeebbfb4db7550f8277305192f0cd91",
+    "model_trees": 954,
+    "model_trained_at": "2026-09-23T23:29:45+00:00",
+    "backtest_table": "data/cache/table_ieee_exp2.rgt",
+    "labels": "not read by any step (parity.py reads no labels; the service replay omits is_fraud)"
+  },
+  "a_model_parity": {
+    "model": "models/ieee/model.txt",
+    "trees": 954,
+    "rows_checked": 92427,
+    "bit_identical": 92427,
+    "max_abs_diff": 0,
+    "scored_rows_missing_from_export": 0,
+    "exit_code": 0
+  },
+  "b_feature_parity": {
+    "decision_log": "var/exp2/decisions.jsonl",
+    "decision_log_lines": 590540,
+    "offline_rows": 590540,
+    "offline_rows_missing_from_log": 0,
+    "log_lines_not_matched": 0,
+    "unscored_log_lines": 0,
+    "catalog_fields_compared": 53,
+    "model_inputs_compared": 53,
+    "all": {
+      "rows_compared": 590540,
+      "feature_rows_differ": 0,
+      "encoded_rows_differ_from_export_csv": 0,
+      "raw_score_differ": 0,
+      "probability_differ": 0,
+      "risk_score_differ": 0,
+      "offline_replay_vs_export_csv_differ": 0,
+      "max_abs_feature_diff": 0,
+      "max_abs_raw_score_diff": 0
+    },
+    "by_split": {
+      "test": {
+        "rows_compared": 92427,
+        "feature_rows_differ": 0,
+        "encoded_rows_differ_from_export_csv": 0,
+        "raw_score_differ": 0,
+        "probability_differ": 0,
+        "risk_score_differ": 0,
+        "offline_replay_vs_export_csv_differ": 0,
+        "max_abs_feature_diff": 0,
+        "max_abs_raw_score_diff": 0
+      },
+      "train": {
+        "rows_compared": 414542,
+        "feature_rows_differ": 0,
+        "encoded_rows_differ_from_export_csv": 0,
+        "raw_score_differ": 0,
+        "probability_differ": 0,
+        "risk_score_differ": 0,
+        "offline_replay_vs_export_csv_differ": 0,
+        "max_abs_feature_diff": 0,
+        "max_abs_raw_score_diff": 0
+      },
+      "valid": {
+        "rows_compared": 83571,
+        "feature_rows_differ": 0,
+        "encoded_rows_differ_from_export_csv": 0,
+        "raw_score_differ": 0,
+        "probability_differ": 0,
+        "risk_score_differ": 0,
+        "offline_replay_vs_export_csv_differ": 0,
+        "max_abs_feature_diff": 0,
+        "max_abs_raw_score_diff": 0
+      }
+    },
+    "field_mismatch_rows": {},
+    "model_encoder_equals_export_encoder": true,
+    "took": "1m54.676s",
+    "ok": true,
+    "exit_code": 0,
+    "send": "sent 590540 requests sequentially in 3m2.824s (3230 req/s), every response 200",
+    "send_seconds": 183,
+    "decision_log_metrics": {
+      "riskgate_decision_log_dropped_total": "0",
+      "riskgate_decision_log_write_errors_total": "0",
+      "riskgate_decision_log_written_total": "590540"
+    }
+  },
+  "c_audit": {
+    "records": 590540,
+    "verified": 590540,
+    "unscored": 0,
+    "versions": {
+      "1": 590540
+    },
+    "mismatched_records": 0,
+    "example_count": 0,
+    "exit_code": 0
+  },
+  "negative_control": {
+    "rows_compared": 590539,
+    "feature_rows_differ": 1,
+    "encoded_rows_differ": 1,
+    "raw_score_differ": 0,
+    "missing_from_log": 1,
+    "field_mismatch_rows": {
+      "amount": 1
+    },
+    "max_abs_feature_diff": 1.4210854715202004e-14,
+    "compare_exit_code": 1,
+    "both_faults_detected": "yes"
+  }
+}
