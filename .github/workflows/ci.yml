@@ -1,5 +1,10 @@
 name: CI
 
+# Nothing here needs the Kaggle data. data/ and models/ are gitignored, every
+# Go test runs on generated or committed fixtures (testdata/, rules/), and the
+# tests that can use real data (TestLeakage, the service benchmarks) read it
+# only when an environment variable points at it.
+
 on:
   push:
   pull_request:
@@ -12,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  go:
-    name: vet, staticcheck, race tests, coverage
+  lint:
+    name: gofmt, tidy, vet, staticcheck, signature vectors
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -32,8 +37,35 @@ jobs:
         run: |
           go install honnef.co/go/tools/cmd/staticcheck@latest
           "$(go env GOPATH)/bin/staticcheck" ./...
+      - name: webhook vectors agree with an independent openssl implementation
+        run: scripts/check_signature_vectors.sh
+
+  # The race detector and coverage run as separate jobs. Together they took
+  # about 7 minutes, because TestLeakage's parallel replays all hit the same
+  # atomic coverage counters. Under -race the heaviest tests shrink their
+  # samples (raceEnabled), so the coverage job is also the one full-strength
+  # run of those tests.
+  race:
+    name: go test -race
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
       - name: go test -race
-        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+        run: go test -race ./...
+
+  cover:
+    name: go test with coverage (no race)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+      - name: go test -cover
+        run: go test -covermode=set -coverprofile=coverage.out ./...
       - name: coverage summary
         run: |
           {
@@ -46,8 +78,6 @@ jobs:
         with:
           name: coverage
           path: coverage.out
-      - name: webhook vectors agree with an independent openssl implementation
-        run: scripts/check_signature_vectors.sh
 
   fuzz:
     name: fuzz (20s per target)
