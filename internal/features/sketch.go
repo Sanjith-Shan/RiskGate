@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/bits"
 	"slices"
+	"unsafe"
 )
 
 // DefaultSketchPlan is coarser than DefaultBucketPlan because every bucket
@@ -22,6 +23,11 @@ type SketchConfig struct {
 	HLLPrecision int        // log2 of HyperLogLog registers (default 6, range 4-8)
 	HLLDepth     int        // HyperLogLog rows (default 2, at most 8)
 	HLLWidth     int        // HyperLogLog columns per row, a power of two (default 1024)
+	// RecencySlots is the size of the first/last-seen table, a power of
+	// two and at least recencyWays (default 1<<18, about 6 MB). Size it
+	// above the number of keys active within IdleTTL; keys beyond that are
+	// forgotten early (see Sketch).
+	RecencySlots int
 	IdleTTL      int64
 }
 
@@ -46,6 +52,9 @@ func (c *SketchConfig) setDefaults() {
 	if c.HLLWidth == 0 {
 		c.HLLWidth = 1024
 	}
+	if c.RecencySlots == 0 {
+		c.RecencySlots = 1 << 18
+	}
 	c.IdleTTL = checkTTL(c.IdleTTL)
 	pow2 := func(n int) bool { return n > 0 && n&(n-1) == 0 }
 	switch {
@@ -55,6 +64,8 @@ func (c *SketchConfig) setDefaults() {
 		panic("features: sketch widths must be powers of two")
 	case c.HLLPrecision < 4 || c.HLLPrecision > 8:
 		panic("features: HLL precision out of range")
+	case !pow2(c.RecencySlots) || c.RecencySlots < recencyWays || c.RecencySlots > 1<<26:
+		panic("features: recency slots must be a power of two, at least 8")
 	}
 	for w, width := range c.Plan {
 		if width <= 0 || windowSeconds[w]%width != 0 {
@@ -64,7 +75,7 @@ func (c *SketchConfig) setDefaults() {
 }
 
 func (c *SketchConfig) values() []int64 {
-	v := []int64{int64(c.Depth), int64(c.Width), int64(c.HLLPrecision), int64(c.HLLDepth), int64(c.HLLWidth)}
+	v := []int64{int64(c.Depth), int64(c.Width), int64(c.HLLPrecision), int64(c.HLLDepth), int64(c.HLLWidth), int64(c.RecencySlots)}
 	return append(v, c.Plan[:]...)
 }
 
@@ -82,19 +93,29 @@ func (c *SketchConfig) values() []int64 {
 //     13%, but small counts use linear counting and are close to exact; a
 //     column shared with another key adds that key's cards, and the minimum
 //     over HLLDepth independent rows limits the damage.
-//   - First and last seen: a min-sketch and a max-sketch of times. The
-//     estimates are bounded by the truth (first seen can only look older,
-//     last seen only newer), and the first-seen sketch never forgets, so a
-//     key back after the idle TTL keeps its old first-seen time where Exact
-//     would start over.
+//   - First and last seen: not a sketch. Whether a key has been seen at all
+//     is membership, and a shared min/max sketch answers membership wrongly
+//     in the harmful direction: once every cell has been touched by some
+//     key, every never-seen key reads as seen, with another key's times.
+//     (That was a bug; see BUGLOG.md.) Instead a fixed-size, 8-way
+//     set-associative table stores each key's full 64-bit hash with its
+//     first and last times. A key that has been idle for IdleTTL reads as
+//     unseen and starts over on its next event, exactly as in Exact. When
+//     a set is full, the entry seen least recently is dropped. The error is
+//     one-sided: a key can be forgotten early (it reads as unseen, or with
+//     a first-seen time that is too recent), but a key is never reported
+//     as seen when it was not, except for a full 64-bit hash collision
+//     (about n^2/2^64 over n keys). When Seen is reported, Last is exact
+//     and First is never earlier than the truth, so seconds_since_first
+//     never overestimates. With fewer live keys than about half the
+//     slots, drops are rare and the table matches Exact.
 //
-// Memory is fixed at construction (about 55 MB with defaults) and does not
+// Memory is fixed at construction (about 70 MB with defaults) and does not
 // depend on the number of keys; Stats reports Keys as -1.
 type Sketch struct {
 	cfg     SketchConfig
 	rings   [NumWindows]cmsRing
-	first   []int64 // min-sketch; math.MaxInt64 is empty
-	last    []int64 // max-sketch; math.MinInt64 is empty
+	seen    []recencySlot // RecencySlots entries in sets of recencyWays
 	hll     [2]hllRing
 	latest  int64 // newest event time; later events never go backward
 	started bool
@@ -108,9 +129,7 @@ func NewSketch(cfg SketchConfig) *Sketch {
 	for w := range NumWindows {
 		s.rings[w] = newCMSRing(cfg.Plan[w], windowSeconds[w]/cfg.Plan[w], cells)
 	}
-	s.first = make([]int64, cells)
-	s.last = make([]int64, cells)
-	s.resetFirstLast()
+	s.seen = make([]recencySlot, cfg.RecencySlots)
 	for i := range s.hll {
 		width := cfg.Plan[distinctWindow]
 		s.hll[i] = newHLLRing(width, windowSeconds[distinctWindow]/width, cfg.HLLDepth*cfg.HLLWidth<<cfg.HLLPrecision)
@@ -118,10 +137,67 @@ func NewSketch(cfg SketchConfig) *Sketch {
 	return s
 }
 
-func (s *Sketch) resetFirstLast() {
-	for i := range s.first {
-		s.first[i], s.last[i] = math.MaxInt64, math.MinInt64
+// recencyWays is the associativity of the first/last-seen table: a set
+// of 8 slots is 192 bytes, three cache lines.
+const recencyWays = 8
+
+// recencySlot is one key's first and last event times. tag is the key's
+// hash with the low bit set, so 0 marks an empty slot.
+type recencySlot struct {
+	tag         uint64
+	first, last int64
+}
+
+const recencySeed = 0x6a09e667f3bcc909 // digits of sqrt(2)
+
+func recencyTag(h uint64) uint64 { return h | 1 }
+
+// recencySet returns the slots of the set key hash h maps to.
+func (s *Sketch) recencySet(h uint64) []recencySlot {
+	sets := uint64(len(s.seen) / recencyWays)
+	i := int(mix64(h^recencySeed)&(sets-1)) * recencyWays
+	return s.seen[i : i+recencyWays]
+}
+
+// lookup returns the live slot for h at now, or nil.
+func (s *Sketch) lookup(h uint64, now int64) *recencySlot {
+	tag := recencyTag(h)
+	set := s.recencySet(h)
+	for i := range set {
+		if set[i].tag == tag {
+			if now-set[i].last < s.cfg.IdleTTL {
+				return &set[i]
+			}
+			return nil
+		}
 	}
+	return nil
+}
+
+// touch records an event at t for h. A key that is new, or idle for the
+// TTL, starts over at t. A new key takes an empty slot, or else the slot
+// seen least recently, which is idle before any other in the set.
+func (s *Sketch) touch(h uint64, t int64) {
+	tag := recencyTag(h)
+	set := s.recencySet(h)
+	victim := -1
+	for i := range set {
+		switch {
+		case set[i].tag == tag:
+			if t-set[i].last >= s.cfg.IdleTTL {
+				set[i].first = t
+			}
+			set[i].last = t
+			return
+		case set[i].tag == 0:
+			if victim < 0 || set[victim].tag != 0 {
+				victim = i
+			}
+		case victim < 0 || set[victim].tag != 0 && set[i].last < set[victim].last:
+			victim = i
+		}
+	}
+	set[victim] = recencySlot{tag: tag, first: t, last: t}
 }
 
 // hllIndex maps an entity to its HyperLogLog ring.
@@ -156,13 +232,8 @@ func (s *Sketch) Read(k Key, now int64) Aggregates {
 	for w := range NumWindows {
 		a.Count[w], a.Sum[w] = s.rings[w].estimate(cells[:s.cfg.Depth], now)
 	}
-	first, last := int64(math.MinInt64), int64(math.MaxInt64)
-	for _, c := range cells[:s.cfg.Depth] {
-		first = max(first, s.first[c])
-		last = min(last, s.last[c])
-	}
-	if last != math.MinInt64 && now-last < s.cfg.IdleTTL {
-		a.Seen, a.First, a.Last = true, first, last
+	if e := s.lookup(h, now); e != nil {
+		a.Seen, a.First, a.Last = true, e.first, e.last
 	}
 	if k.Entity.tracksDistinct() {
 		cols := s.hllCols(h)
@@ -193,10 +264,7 @@ func (s *Sketch) Add(k Key, ev Event) {
 		r.advance(floorDiv(ev.Time, r.width))
 		r.add(cells[:s.cfg.Depth], ev.Milli)
 	}
-	for _, c := range cells[:s.cfg.Depth] {
-		s.first[c] = min(s.first[c], ev.Time)
-		s.last[c] = max(s.last[c], ev.Time)
-	}
+	s.touch(h, ev.Time)
 	if k.Entity.tracksDistinct() && ev.Card != NoCard {
 		r := &s.hll[hllIndex(k.Entity)]
 		r.advance(floorDiv(ev.Time, r.width))
@@ -215,7 +283,7 @@ func (s *Sketch) ReadAdd(k Key, ev Event) Aggregates {
 func (s *Sketch) EvictIdle(int64) int { return 0 }
 
 func (s *Sketch) Stats() Stats {
-	b := int64(len(s.first)+len(s.last)) * 8
+	b := int64(len(s.seen)) * int64(unsafe.Sizeof(recencySlot{}))
 	for w := range s.rings {
 		b += s.rings[w].bytes()
 	}
@@ -484,7 +552,8 @@ func hllEstimate(regs []uint8) float64 {
 	return e
 }
 
-const sketchMagic = "riskgate/sketch/v1"
+// v2 replaced v1's min/max first/last-seen sketches with the recency table.
+const sketchMagic = "riskgate/sketch/v2"
 
 // Snapshot writes the non-empty cells of every table, in index order. The
 // running sums are rebuilt on restore.
@@ -512,8 +581,21 @@ func (s *Sketch) Snapshot(w io.Writer) error {
 			}
 		}
 	}
-	encodeSparse(enc, s.first, math.MaxInt64)
-	encodeSparse(enc, s.last, math.MinInt64)
+	n := 0
+	for i := range s.seen {
+		if s.seen[i].tag != 0 {
+			n++
+		}
+	}
+	enc.uvarint(uint64(n))
+	for i, e := range s.seen {
+		if e.tag != 0 {
+			enc.uvarint(uint64(i))
+			enc.uvarint(e.tag)
+			enc.varint(e.first)
+			enc.varint(e.last)
+		}
+	}
 	for i := range s.hll {
 		r := &s.hll[i]
 		enc.varint(r.cur)
@@ -542,22 +624,6 @@ func boolInt(b bool) uint64 {
 		return 1
 	}
 	return 0
-}
-
-func encodeSparse(enc *encoder, v []int64, empty int64) {
-	n := 0
-	for _, x := range v {
-		if x != empty {
-			n++
-		}
-	}
-	enc.uvarint(uint64(n))
-	for i, x := range v {
-		if x != empty {
-			enc.uvarint(uint64(i))
-			enc.varint(x)
-		}
-	}
 }
 
 // Restore replaces the sketch's contents with a snapshot taken from a
@@ -603,12 +669,17 @@ func (s *Sketch) decode(d *decoder) error {
 			}
 		}
 	}
-	for _, v := range [][]int64{s.first, s.last} {
-		n := d.count(cells)
-		for range n {
-			i := d.count(cells - 1)
-			v[i] = d.varint()
+	slots := uint64(len(s.seen))
+	n := d.count(slots)
+	for range n {
+		i, tag, first, last := d.count(slots-1), d.uvarint(), d.varint(), d.varint()
+		if d.err != nil {
+			return d.err
 		}
+		if tag&1 == 0 || s.seen[i].tag != 0 || first > last {
+			return errSnapshot
+		}
+		s.seen[i] = recencySlot{tag: tag, first: first, last: last}
 	}
 	for i := range s.hll {
 		r := &s.hll[i]
