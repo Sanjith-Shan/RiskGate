@@ -488,16 +488,21 @@ The first run found a bug in the sketch. First and last seen were min/max sketch
 ### 5. Latency under load
 
 **Question.** What is the highest arrival rate at which p99 stays inside the deadline?
-**Method.** `cmd/loadgen`, open loop at fixed rates, latency measured from each request's intended send time (see `docs/LOADGEN.md`), HdrHistogram percentiles. Sweep the shard count and compare with a single mutex and `sync.Map`.
-**Result.** Machine `TBD`. Deadline `TBD (starts at 50 ms)`.
+**Method.** `scripts/experiments/exp5.sh` runs `cmd/loadgen` open loop at fixed rates, measuring latency from each request's intended send time (see `docs/LOADGEN.md`) with HdrHistogram percentiles. The requests are the test month's 92,427 real IEEE-CIS payments, labels stripped, sent round-robin with a unique `payment_id` on every send. Each configuration gets a fresh `riskgate serve` with models/ieee (954 trees), `rules/default.rules` and exact state. It sweeps shard counts 1, 4, 16 and 64 against a single mutex and `sync.Map`. Every rate runs 5 s of warmup and 20 s of measurement. Rates climb from 500 until two in a row miss the deadline, and the whole sweep ran twice. A rate counts as inside only if p99 is at most 50 ms with no errors, timeouts or non-2xx responses. The in-process cost comes from the `internal/service` benchmarks with `RISKGATE_BENCH_MODEL` and `RISKGATE_BENCH_REQUESTS` set.
+**Result.** Machine: Apple M3 Pro (6P+6E cores, 12 logical CPUs), go1.26.5, GOMAXPROCS 12 for both server and load generator, on the same machine. Deadline 50 ms. Run 2026-09-23. **These numbers are not quotable.** The machine was shared with a VM, Docker and other experiments. The 1-minute load average before each rate ranged from 10.5 to 66 (median 38.8) on 12 CPUs, and in 52 of 58 rate steps the load generator itself fell more than 1 ms behind schedule at p99. Load changed while the configurations ran one after another, so the ranking between configurations below reflects machine noise, not the data structures. Re-run `scripts/experiments/exp5.sh` on a quiet machine before quoting any number here.
 
-| State concurrency | Rate (req/s) | p50 | p99 | p99.9 | p99 inside deadline |
-|---|---|---|---|---|---|
-| Single mutex | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) |
-| `sync.Map` | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) |
-| Sharded, N = TBD | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) | TBD (experiment 5) |
+| State concurrency | Rate (req/s) | p50 | p99 | p99.9 | p99 inside deadline | Highest rate inside, per run |
+|---|---|---|---|---|---|---|
+| Single mutex | 1000 | 1.75 ms | 49.5 ms | 88.6 ms | 1 of 2 runs | 1000, 500 |
+| `sync.Map` | 1000 | 1.76 ms | 36.8 ms | 66.7 ms | 1 of 2 runs | none, 1000 |
+| Sharded, N = 1 | 1000 | 1.00 ms | 23.7 ms | 89.7 ms | 2 of 2 runs | 8000, 1000 |
+| Sharded, N = 4 | 1000 | 1.13 ms | 24.0 ms | 47.5 ms | 2 of 2 runs | 5000, 1000 |
+| Sharded, N = 16 | 1000 | 1.05 ms | 6.8 ms | 23.0 ms | 2 of 2 runs | 3000, 3000 |
+| Sharded, N = 64 | 1000 | 1.36 ms | 50.5 ms | 110.1 ms | 1 of 2 runs | none, 1000 |
 
-Highest rate with p99 inside the deadline `TBD (experiment 5)`.
+Highest rate with p99 inside the deadline: not established. On this loaded machine the best single run reached 8,000 req/s (sharded, N = 1), but the same configuration's second run failed at 2,000. Full per-rate tables are in `results/exp5/exp5.md`.
+
+Single-request cost in process, median of 5 runs, taken while the load average was 78 to 100 (so these are upper bounds). The full pipeline (features, model, Saabas contributions and rules) costs 189 µs. Within it, the model score takes 78 µs and the Saabas contributions for reasons take 88 µs. The handler, which adds JSON and the decision log, costs 286 µs, and a request over loopback HTTP costs 473 µs. The 954-tree model is nearly all of the pipeline's cost, and computing the contributions on every request doubles it.
 
 ### 6. Backtest speed
 
