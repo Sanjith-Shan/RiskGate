@@ -6,17 +6,19 @@ The design is in [DESIGN.md](DESIGN.md). It starts with what the data can and ca
 
 ## Results
 
-Nothing here is filled in until it is measured. Each cell links to the experiment that produces it.
+Measured on the IEEE-CIS data (real, anonymized Vesta e-commerce transactions) with a time split. Each row links to the experiment that produced it.
 
 | What | Result | Where |
 |---|---|---|
-| Fraud recall at 1% FPR, raw columns to raw plus velocity features (test month, time split) | TBD (experiment 1) | [Experiment 1](DESIGN.md#1-what-the-streaming-features-are-worth) |
-| Train/serve parity, service features against offline export | TBD (experiment 2) | [Experiment 2](DESIGN.md#2-trainserve-parity) |
-| Go evaluator against LightGBM raw scores, rows bit-identical | TBD (experiment 2) | [Experiment 2](DESIGN.md#2-trainserve-parity) |
-| Closure and vectorized evaluators, generated rules and disagreements | TBD (experiment 3) | [Experiment 3](DESIGN.md#3-two-evaluators-one-answer) |
-| Highest rate with p99 inside the deadline, on a labelled machine | TBD (experiment 5) | [Experiment 5](DESIGN.md#5-latency-under-load) |
-| Backtest of one rule over 590K rows | TBD (experiment 6) | [Experiment 6](DESIGN.md#6-backtest-speed) |
+| Fraud recall at 1% FPR, raw columns → raw plus velocity features (test month, touched once) | **14.8% → 16.8%**; fraud-dollar recall at a 1% legit-dollar budget **15.6% → 20.5%**; ROC-AUC 0.7745 → 0.8105 | [Experiment 1](DESIGN.md#1-what-the-streaming-features-are-worth) |
+| Train/serve parity: all 590,540 payments replayed through the HTTP service, features, model inputs and scores against the offline pipeline | **0 mismatches**, bit for bit | [Experiment 2](DESIGN.md#2-trainserve-parity) |
+| Go evaluator against LightGBM `predict(raw_score=True)`, 954 trees | **92,427 / 92,427** test rows bit-identical | [Experiment 2](DESIGN.md#2-trainserve-parity) |
+| Closure and vectorized evaluators on generated rules | **10,000 rules × 590,540 rows, 0 disagreements** | [Experiment 3](DESIGN.md#3-two-evaluators-one-answer) |
+| Highest rate with p99 inside the deadline | Not yet quotable: the only run was on a heavily loaded machine. `scripts/experiments/exp5.sh` re-runs it | [Experiment 5](DESIGN.md#5-latency-under-load) |
+| Backtest of one proposed rule against the cached rule set, 590K rows | 0.58 ms (loaded machine; re-run before quoting) | [Experiment 6](DESIGN.md#6-backtest-speed) |
 | Simulated dispute losses, no checks against model plus rules, through Clearinghouse | TBD (experiment 8) | [Experiment 8](DESIGN.md#8-end-to-end-through-clearinghouse) |
+
+The gain from velocity features is real and modest, and the absolute numbers are well below competition scores because the model sees only the fields a rule author can name. [Experiment 1](DESIGN.md#1-what-the-streaming-features-are-worth) explains why.
 
 RiskGate does not compare itself with Stripe Radar or with the Kaggle leaderboard. Neither comparison would be fair or meaningful. The claim is the ablation in experiment 1 and the correctness results in experiments 2 and 3.
 
