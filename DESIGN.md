@@ -553,12 +553,17 @@ Assumed per-dispute fee: $15.00, Stripe's published US dispute fee, used as an a
 ### 9. The risk service fails
 
 **Question.** What does failing open actually cost?
-**Method.** Kill RiskGate during experiment 8's replay, then restart it from its snapshot.
+**Method.** Clearinghouse's failure runner (`bin/exp-risk-failure`) sends an open-loop stream of risk checks at 200/s through Clearinghouse's real RiskGate client: a 50 ms deadline, a circuit breaker that opens after 5 consecutive failures with a 2 s cool-down, and fail-open. RiskGate runs the IEEE-CIS model and `rules/default.rules` from the warm snapshot (velocity state as of the start of the test month). Each run is 10 s healthy, 10 s down, 10 s healthy. In **kill** mode RiskGate is SIGKILLed and a new process starts over its last periodic snapshot, where connections are refused. In **freeze** mode it is SIGSTOPped and resumed, where connections hang, which is the case the deadline exists for. `scripts/experiments/exp9.sh`; full write-up in [`results/exp9/README.md`](results/exp9/README.md).
 **Result.**
 
-| Payments during outage | Went through unchecked | Of those, fraud | Clearinghouse p99 during outage | Time to first decision after restart |
-|---|---|---|---|---|
-| TBD (experiment 9) | TBD (experiment 9) | TBD (experiment 9) | TBD (experiment 9) | TBD (experiment 9) |
+| Mode | Calls | Went through unchecked | First checked payment after recovery | Client p99, whole run | Client max |
+|---|---|---|---|---|---|
+| Kill (process restarts from snapshot) | 6,000 | 3,240 | 2.06 s after restart | 7.4 ms | 57.3 ms |
+| Freeze (connections hang) | 6,000 | 2,063 | 0.32 s after thaw | 5.5 ms | 59.0 ms |
+
+Restart to ready over the 4.16 MB warm snapshot (498,113 payments of history) took 383 ms. The cost of failing open is simple to state: every payment during the outage goes through unchecked, about 2,000 at 200/s over 10 s. In kill mode that also includes the breaker's 2 s cool-down after RiskGate is back, which is why the first checked payment comes 2.06 s after a restart that was ready in 0.38 s. Clearinghouse's latency stayed bounded by the deadline throughout, with a maximum of 57 to 59 ms against 50 ms plus overhead, so payments kept flowing. In freeze mode only the first 16 calls paid the full deadline before the breaker opened.
+
+Two things are not settled. First, in kill mode the breaker also opened once in each healthy phase, about 6 to 7 s after each process started, costing about 415 unchecked payments each time. It reproduced in two runs and never happened in freeze mode. Periodic snapshots and GC were ruled out directly. The machine was not idle during either run, so contention is the leading explanation, but a cold-start effect has not been ruled out. Those numbers are not cited until an idle rerun. Second, how many of the unchecked payments were fraud depends on which payments land in the outage window. The fraud count and its dollar cost come from experiment 8's replay, which fails RiskGate the same way.
 
 ## Bug log
 
