@@ -542,13 +542,19 @@ Across the four rules tried, the naive backtest understates fraud dollars caught
 **Method.** Replay the test month through Clearinghouse's API, with Clearinghouse calling RiskGate on every confirm. Fraud-labelled payments use Clearinghouse's disputing test card, so disputes arrive in simulated time and flow back as labels by webhook. Compare three policies. Everything around the data is a simulation driven by it, and the per-dispute fee is an assumption.
 **Result.**
 
-| Policy | Disputes | Dispute losses (amount plus assumed fee) | Legitimate revenue blocked | Net |
-|---|---|---|---|---|
-| No risk checks | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) |
-| Model threshold alone | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) |
-| Model plus rules | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) | TBD (experiment 8) |
+Run by Clearinghouse's `bin/exp-replay` on 2026-09-25 over all 92,427 test-month payments. Each policy used its own RiskGate, started from the warm snapshot (velocity state as of the start of the test month), and the model hash was checked before each run. Details and the source files are in [`results/exp8/README.md`](results/exp8/README.md).
+
+| Policy | Disputes | Dispute losses (amount plus assumed fee) | Legitimate revenue blocked | Payouts held for review | Net of checks |
+|---|---|---|---|---|---|
+| No risk checks | 3,213 | $535,657.76 | $0 | 0 | $0 |
+| Model threshold alone (`risk_score >= 50`) | 2,986 | $472,390.72 | $40,359.44 (157 payments) | 0 | +$22,907.60 |
+| Model plus rules (`rules/default.rules`) | 2,986 | $472,390.72 | $40,359.44 (157 payments) | 2,496 | +$22,907.60 |
 
 Assumed per-dispute fee: $15.00, Stripe's published US dispute fee, used as an assumption in both RiskGate's and Clearinghouse's write-ups.
+
+Dispute losses fell 11.8%, and net of the legitimate revenue blocked the checks came out $22,907.60 ahead over the month. The block rule caught 227 frauds out of 384 blocked payments, 59% precision against the 71% it had on validation, where its threshold was chosen. The two model policies have identical money outcomes because both block on the same rule. The rule set's other rules are review rules, and in Clearinghouse a review lets the payment through and holds the merchant's payout, so they change who waits for money, not how much is lost. Nobody works the review queue in this simulation. That makes the honest summary of the review rules "2,496 holds opened". What those holds are worth depends on a reviewer this simulation does not have.
+
+The run also closes the loop the spec describes. Clearinghouse delivered all 2,986 dispute events and 92,043 success events to RiskGate's webhook receiver as signed webhooks, and every delivery succeeded. RiskGate recorded them as labels, which is the path by which a production RiskGate would learn from its own mistakes. The latency measured inside these runs is not quotable, because the runs were concurrent on a loaded machine that also slept mid-run.
 
 ### 9. The risk service fails
 
