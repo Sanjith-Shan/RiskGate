@@ -66,8 +66,7 @@ EOF
   # there: topics are not deleted, and the decisions topic is read back
   # deduplicated by payment id rather than compacted.
   if [[ $WIN == 1 ]]; then
-    printf '%s
-' log.cleaner.enable=false log.retention.hours=-1 delete.topic.enable=false >>"$CONF"
+    printf '%s\n' log.cleaner.enable=false log.retention.hours=-1 delete.topic.enable=false >>"$CONF"
   fi
 }
 
