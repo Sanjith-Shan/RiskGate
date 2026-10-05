@@ -174,7 +174,7 @@ func (s *Service) assessBody(w http.ResponseWriter, r *http.Request, b *assessBu
 	if b.req.RiskFields == nil { // "risk_fields": null
 		b.req.RiskFields = make(map[string]any, 16)
 	}
-	t, err := s.txnOf(&b.req)
+	t, err := txnOf(&b.req)
 	if err != nil {
 		return writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -215,11 +215,32 @@ func (s *Service) assessBody(w http.ResponseWriter, r *http.Request, b *assessBu
 	return http.StatusOK
 }
 
+// DecodePayment parses an assess request body the way POST /v1/assess does,
+// into the transaction the feature engine reads, with its payment id and
+// created time. The stream pipeline's router calls it on every record of
+// its payments topic, so a payment means the same thing on either path.
+func DecodePayment(body []byte) (t data.Txn, paymentID string, created int64, err error) {
+	req := assessRequest{RiskFields: make(map[string]any, 16)}
+	if err := json.Unmarshal(body, &req); err != nil {
+		return t, "", 0, fmt.Errorf("invalid_json: %w", err)
+	}
+	if req.RiskFields == nil {
+		req.RiskFields = make(map[string]any, 16)
+	}
+	if t, err = txnOf(&req); err != nil {
+		return t, req.PaymentID, req.Created, err
+	}
+	if req.Created > maxCreatedUnix {
+		return t, req.PaymentID, req.Created, fmt.Errorf("created_out_of_range: created %d is after the year 3000", req.Created)
+	}
+	return t, req.PaymentID, req.Created, nil
+}
+
 // txnOf turns a request into the transaction the feature engine reads.
 // risk_fields is parsed by data.ParseRiskFields, the parser the replay
 // export uses, so an online payment and its offline row cannot disagree
 // about a field.
-func (s *Service) txnOf(req *assessRequest) (data.Txn, error) {
+func txnOf(req *assessRequest) (data.Txn, error) {
 	if req.PaymentID == "" {
 		return data.Txn{}, errors.New("payment_id is required")
 	}
@@ -353,25 +374,25 @@ func (s *Service) logDecision(id [assessmentIDLen]byte, req *assessRequest, a *a
 		return
 	}
 	rec := s.dlog.get()
-	rec.assessmentID = id
-	rec.paymentID = req.PaymentID
-	rec.created = req.Created
-	rec.at = s.now().UnixMilli()
-	rec.version = a.d.Version
-	rec.action = a.d.Action
-	rec.ruleID = ""
+	rec.AssessmentID = id
+	rec.PaymentID = req.PaymentID
+	rec.Created = req.Created
+	rec.At = s.now().UnixMilli()
+	rec.Version = a.d.Version
+	rec.Action = a.d.Action
+	rec.RuleID = ""
 	if a.d.Rule != nil {
-		rec.ruleID = a.d.Rule.ID
+		rec.RuleID = a.d.Rule.ID
 	}
 	for _, r := range a.d.Shadow {
-		rec.shadow = append(rec.shadow, r.ID)
+		rec.Shadow = append(rec.Shadow, r.ID)
 	}
-	rec.scored, rec.riskScore, rec.prob, rec.raw, rec.bias = a.scored, a.riskScore, a.prob, a.raw, a.bias
-	copy(rec.num, b.row.Num)
-	copy(rec.str, b.row.Str)
-	copy(rec.contrib, b.contrib)
-	rec.latency = elapsed
-	rec.deadlineMs = deadline
+	rec.Scored, rec.RiskScore, rec.Prob, rec.Raw, rec.Bias = a.scored, a.riskScore, a.prob, a.raw, a.bias
+	copy(rec.Num, b.row.Num)
+	copy(rec.Str, b.row.Str)
+	copy(rec.Contrib, b.contrib)
+	rec.Latency = elapsed
+	rec.DeadlineMs = deadline
 	s.dlog.put(rec)
 }
 

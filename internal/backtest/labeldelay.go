@@ -59,13 +59,23 @@ func SimulateLabelTimes(t *Table, m DelayModel) []int64 {
 		if t.Fraud[i] != Fraud {
 			continue
 		}
-		days := m.MedianDays * math.Exp(m.Sigma*normal(m.Seed, uint64(t.ID[i])))
-		if m.MaxDays > 0 && days > m.MaxDays {
-			continue // past the dispute window: never arrives
+		if at, ok := m.LabelTime(t.ID[i], t.DT[i]); ok {
+			out[i] = at
 		}
-		out[i] = t.DT[i] + int64(math.Round(days*86400))
 	}
 	return out
+}
+
+// LabelTime is the SIMULATED time the dispute of fraudulent payment id, made
+// at dt, arrives: dt plus a delay drawn from m, the same draw
+// SimulateLabelTimes makes. It reports false for a draw past the dispute
+// window, a dispute that never arrives.
+func (m DelayModel) LabelTime(id, dt int64) (int64, bool) {
+	days := m.MedianDays * math.Exp(m.Sigma*normal(m.Seed, uint64(id)))
+	if m.MaxDays > 0 && days > m.MaxDays {
+		return 0, false // past the dispute window: never arrives
+	}
+	return dt + int64(math.Round(days*86400)), true
 }
 
 // normal is a standard normal draw determined by (seed, id): two uniforms

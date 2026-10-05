@@ -1,6 +1,6 @@
 # RiskGate: Real-Time Fraud Rules Engine
 
-RiskGate is a fraud rules engine in Go that sits in a payment's critical path and answers allow, block, or review. Analysts write rules in a small typed language with error messages meant for people who are not programmers, and a backtester replays 590K real e-commerce transactions to show what a rule would have caught and what it would have cost before it goes live. A gradient-boosted model, evaluated natively in Go, feeds the rules a calibrated `risk_score`. It does not make the decision.
+RiskGate is a fraud rules engine in Go that sits in a payment's critical path and answers allow, block, or review. Analysts write rules in a small typed language with error messages meant for people who are not programmers, and a backtester replays 590K real e-commerce transactions to show what a rule would have caught and what it would have cost before it goes live. A gradient-boosted model, evaluated natively in Go, feeds the rules a calibrated `risk_score`. It does not make the decision. The same features, model and rules also run as a Kafka pipeline, with velocity state partitioned by entity key, event-time watermarks, and exactly-once effect across crashes and rebalances.
 
 The design is in [DESIGN.md](DESIGN.md). It starts with what the data can and cannot say.
 
@@ -19,6 +19,10 @@ Measured on the IEEE-CIS data (real, anonymized Vesta e-commerce transactions) w
 | Highest rate with p99 inside the deadline | Not yet quotable: the only run was on a heavily loaded machine. `scripts/experiments/exp5.sh` re-runs it | [Experiment 5](DESIGN.md#5-latency-under-load) |
 | Backtest of one proposed rule against the cached rule set, 590K rows | 0.58 ms (loaded machine; re-run before quoting) | [Experiment 6](DESIGN.md#6-backtest-speed) |
 | RiskGate killed mid-stream (Clearinghouse client, 200/s, 50 ms deadline) | Payments fail open for the outage plus the breaker's 2 s cool-down; restart from snapshot ready in 383 ms; client max latency 57 ms | [Experiment 9](DESIGN.md#9-the-risk-service-fails) |
+| All 590,540 payments through the Kafka pipeline (k1): decisions against the offline pipeline and against the HTTP service | **0 mismatches**, features, model inputs, scores, decisions and rules, bit for bit; backtests replayed from the decisions topic match the offline table's on all 13 rules | [Stream k1](DESIGN.md#k1-parity-through-kafka) |
+| Pipeline processes killed mid-replay at random (k2, three runs) | **156 kills, 0 payments lost, 0 events applied twice** (snapshot counters equal the data's 1,729,036 entity events exactly in every run); every re-sent decision identical | [Stream k2](DESIGN.md#k2-crashes) |
+| Kafka pipeline throughput on a shared 4-core laptop chip (k3) | Kept up through 5,000 payments/s, fell behind from 6,000; not quotable (shared machine) | [Stream k3](DESIGN.md#k3-lag-and-latency) |
+| One consumer group partitioned by card, the design not taken | Device and email-domain features wrong for **85.7%** of payments from 2 partitions on | [Stream k1](DESIGN.md#k1-parity-through-kafka) |
 | Simulated dispute losses through Clearinghouse, test month, no checks → model plus rules | **$535,658 → $472,391 (−11.8%)**, net +$22,908 after $40,359 of legitimate revenue blocked; assumed $15 fee | [Experiment 8](DESIGN.md#8-end-to-end-through-clearinghouse) |
 
 The gain from velocity features is real and modest, and the absolute numbers are well below competition scores because the model sees only the fields a rule author can name. [Experiment 1](DESIGN.md#1-what-the-streaming-features-are-worth) explains why.
@@ -128,6 +132,23 @@ go run ./cmd/parity -model models/mine -export data/export_real/export.csv -scor
 
 Row-level outputs (per-row scores, replay files, decision logs) go under `data/` or `var/`, never `results/`.
 
+## Streaming from Kafka
+
+`riskgate stream` runs the same features, model and rules as a Kafka pipeline: payments in, decisions out, velocity state partitioned by entity key and handed over on rebalance. [The design](DESIGN.md#the-stream-pipeline) explains why it is three stages and not one. Kafka 3.9 or later, one local broker is enough.
+
+```sh
+scripts/kafka_local.sh start                      # one KRaft broker on 127.0.0.1:19092, everything under build/
+go build -o build/bin/ ./cmd/...
+build/bin/riskgate stream topics                  # riskgate.payments, .entity-events, .parts, .decisions, .disputes
+build/bin/riskgate stream run -model models/synthetic -stages route,aggregate,join,labels -metrics-addr 127.0.0.1:19500 &
+build/bin/riskgate stream produce -synthetic -data data   # payments in event-time order, heartbeats, SIMULATED disputes
+build/bin/riskgate stream decisions -out build/decisions.jsonl   # read back, deduplicated, in event-time order
+build/bin/riskgate audit -log build/decisions.jsonl -rules-history var/stream/rules-history -model models/synthetic
+build/bin/riskgate stream backtest -log build/decisions.jsonl -rule 'block if :risk_score: >= 70'
+```
+
+Run more `stream run` processes, with any subset of `-stages`, and the partitions spread over them. `cmd/streamexp` runs experiments k1 to k4 against the broker and appends one row per run to `results/stream/*.jsonl`. Its row-level files go under `build/stream/`.
+
 ## Repository layout
 
 ```
@@ -141,6 +162,7 @@ cmd/
   serveparity/  experiment 2's replay through HTTP and its bit-for-bit comparison
   experiments/state/  experiment 4, the velocity state shootout
   loadgen/      open-loop load generator for experiment 5 (docs/LOADGEN.md)
+  streamexp/    the Kafka pipeline's experiments, k1 to k4, and the offline controls
 internal/
   schema/       the field catalog shared by features, rules, model and backtester
   data/         loader, (DT, ID) ordering, month split, cache, replay format
@@ -151,8 +173,9 @@ internal/
   webhook/      Clearinghouse signature verifier, dedupe, event handler
   loadgen/      load generator internals
   service/      /v1/assess, rule hot swap, shadow rules, decision log, snapshots, metrics, the page
+  stream/       the Kafka pipeline: route, aggregate (watermarks), join, labels; snapshots and handover
 python/         offline training, baselines, evaluation, parity, fixtures
-scripts/        data download, fuzzing, signature-vector checks, experiments/ (exp 2 and 5)
+scripts/        data download, fuzzing, signature-vector checks, a local Kafka broker, experiments/ (exp 2 and 5)
 rules/          default.rules (the service's tuned set), baseline.rules, model_only.rules, lists.json
 results/        aggregate results of every experiment run, with provenance
 docs/           load generator notes, interview preparation
@@ -180,6 +203,7 @@ What the tests are there to prove.
 - **Error messages.** 35 golden files under `internal/rules/testdata/errors`.
 - **Webhook signatures.** Shared vectors with Clearinghouse's Ruby verifier, and CI re-checks RiskGate's vectors against an independent Python and `openssl` implementation. [More](DESIGN.md#signatures)
 - **Snapshots.** Restored velocity state is byte-identical to the state that was saved.
+- **The stream pipeline.** `TestPartitionedEqualsReplay` splits velocity state by entity key and joins the pieces, and requires `Replay`'s rows exactly. The stream tests run the whole pipeline on franz-go's in-process fake cluster, and in CI's `kafka` job against a real broker: parity with the offline pipeline, crashes mid-stream, members joining and leaving, and a negative control that turns the watermarks off and must produce mismatches.
 
 ## Design notes
 

@@ -407,7 +407,7 @@ func TestDecisionLogDropsInsteadOfBlocking(t *testing.T) {
 	start := time.Now()
 	for range n {
 		rec := l.get()
-		rec.paymentID = strings.Repeat("p", 200)
+		rec.PaymentID = strings.Repeat("p", 200)
 		l.put(rec)
 	}
 	if el := time.Since(start); el > 2*time.Second {

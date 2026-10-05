@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/Sanjith-Shan/RiskGate/internal/webhook"
@@ -237,6 +238,12 @@ func writeAtomic(path string, write func(io.Writer) error) (err error) {
 	}
 	if err = os.Rename(f.Name(), path); err != nil {
 		return err
+	}
+	if runtime.GOOS == "windows" {
+		// Windows cannot open a directory for fsync ("Access is denied");
+		// NTFS journals the rename itself. Found running the service on
+		// Windows for the stream experiments.
+		return nil
 	}
 	d, err := os.Open(dir)
 	if err != nil {

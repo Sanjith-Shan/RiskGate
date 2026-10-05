@@ -20,11 +20,12 @@ Numbers written as `TBD (experiment N)` have not been measured yet. Nothing in t
 8. [Two evaluators and the differential test](#two-evaluators-and-the-differential-test)
 9. [The backtester](#the-backtester)
 10. [The online service](#the-online-service)
-11. [Integration with Clearinghouse](#integration-with-clearinghouse)
-12. [Experiments](#experiments)
-13. [Bug log](#bug-log)
-14. [What I would do next](#what-i-would-do-next)
-15. [Reading list and credits](#reading-list-and-credits)
+11. [The stream pipeline](#the-stream-pipeline)
+12. [Integration with Clearinghouse](#integration-with-clearinghouse)
+13. [Experiments](#experiments)
+14. [Bug log](#bug-log)
+15. [What I would do next](#what-i-would-do-next)
+16. [Reading list and credits](#reading-list-and-credits)
 
 ## What the data can and cannot say
 
@@ -96,6 +97,8 @@ What exists today, package by package.
 | `internal/webhook` | Clearinghouse signature verifier, dedupe, event envelope, HTTP handler | built |
 | `internal/loadgen`, `cmd/loadgen` | Open-loop load generator with coordinated-omission correction | built |
 | `internal/service`, `cmd/riskgate` | `/v1/assess`, idempotency, rule swap, shadow rules, decision log and `riskgate audit`, snapshots, metrics, the page, and `riskgate table` | built |
+| `internal/stream`, `riskgate stream` | The Kafka pipeline: route, aggregate with watermarks, join and score, labels; snapshot checkpoints, handover on rebalance, backtests from the topics | built |
+| `cmd/streamexp` | Stream experiments k1 to k4 against a real broker, and the offline controls | built |
 
 ## One feature implementation, and point-in-time correctness
 
@@ -376,6 +379,60 @@ Velocity state and the webhook deduper are snapshotted to disk and restored on s
 
 Latency histograms per endpoint (HdrHistogram), decisions by action and rule, rule-set version, state size, webhook verification failures by error code, and dedupe hits.
 
+## The stream pipeline
+
+The online service computes velocity features from the payments it is asked about. A production fraud system takes its signals off an event stream as well: every payment the platform makes, whichever path it came through, and every dispute weeks later. `internal/stream` is that path. Payments arrive on a Kafka topic, velocity state is updated from them, every payment gets a decision with the rule and score that produced it, and the decisions go out on a topic that a backtest can be replayed from. It runs the same features, model and rules as the service, and experiment k1 checks that it computes the same answer, bit for bit.
+
+### Why it is three stages
+
+The obvious design is one consumer group on a payments topic partitioned by card, each partition keeping velocity state for its own payments. It gets two of the four entities right. Card and `uid` (which contains card1) are co-partitioned with the payment. Device and email domain are not. A device or a domain is shared by payments on many cards, so each partition would count only its own share of their traffic, and `distinct_cards_per_email_24h` would mean "distinct cards per email domain on this partition". Nothing would crash. The model would just see features it was never trained on. The offline control in experiment k1 measures how many payments that design gets wrong.
+
+So the pipeline partitions state by **entity key**, the way Kafka Streams repartitions before an aggregation, and joins the pieces back together:
+
+```
+ payments (by card)        entity-events (by entity key)         parts (by payment id)        decisions (by payment id)
+ ------------------> route -----------------------------> aggregate -----------------> join -------------------->
+   assess JSON,            one event per present key,         one entity's features       decision-log JSON line:
+   heartbeats              plus watermarks                    per payment                 features, score, rule
+                     \______________ the payment itself (base part) ______________/
+```
+
+- **route** (stateless) parses each payment with the service's own parser (`service.DecodePayment`), sends one event per present entity key to the aggregator partition that owns that key, and sends the payment itself to the joiner partition that owns its id.
+- **aggregate** owns the velocity state of the keys that hash to its partition. For each event it calls `Engine.ScoreAndUpdateEntity`, which is `ScoreAndUpdate` taken apart along the seams it already had (read and update one key under one lock, then fill that entity's slots), and sends that entity's features to the joiner. **One feature implementation** stays shared: the service, the export, the backtester and the stream all run `fillEntity`, and `TestPartitionedEqualsReplay` checks that splitting the state by key and joining the pieces gives `Replay`'s rows exactly.
+- **join** waits for the payment and each of its entities' features, assembles the row with `FillRaw` and `FillMissing`, scores it with the same `Scorer` call the service makes, applies the rule set, and writes the service's decision-log line (`service.DecisionEncoder`). `riskgate audit` and experiment 2's comparison read the decisions topic unchanged.
+
+Disputes take a fourth, simpler stage: **labels** consumes dispute events and records them in the service's `LabelStore`, which appends and fsyncs before acknowledging and upserts by dispute id.
+
+### Event time across partitions: watermarks
+
+Partitioning by key breaks the one thing the features depend on most, order. An aggregator partition receives events from every payments partition, and they interleave in whatever order the network delivers them. A device shared by payments in two payments partitions would see its events in arrival order. A velocity feature computed in arrival order is not the feature training saw, and the engine's rule for a late event (recorded at the key's latest time) keeps it safe, not identical.
+
+The fix is the Dataflow model's (Akidau et al.) and Flink's: per-channel watermarks, minimum across channels. Each router task, after its batch is acknowledged, sends every aggregator partition a watermark, "payments partition *p* will send nothing at or before position (DT, TransactionID)". The aggregator buffers events in a heap and releases them in (DT, TransactionID, entity) order only once the minimum watermark over all payments partitions has passed them. A quiet payments partition would hold every aggregator back, so the producer sends heartbeats, which the router turns into watermarks, the same idleness problem Flink solves the same way. The cost is latency: an event waits for the slowest partition's watermark.
+
+The contract this rests on is that each payments partition is in event-time order, which a producer writing from an ordered log (an outbox, or this replay) can promise. The router counts any payment that breaks it, and the aggregator counts any event that arrives after the watermark passed it. The aggregators' late count, kept in their snapshots, is 0 at the end of every run reported here, and the routers' order-violation count is 0 in k1, the run that records the routers' counters. The negative control, `-arrival-order`, applies events as they arrive with no watermarks. `TestStreamArrivalOrderBreaksParity` requires it to produce mismatches, so the parity test can fail when the merger is missing, and on the real data it changed the features of 87.2% of payments (experiment k1).
+
+### Exactly-once effect
+
+Kafka delivers at least once, and a process can die anywhere. The pipeline gets exactly-once *effect* (no event lost, none applied twice to velocity state) from three pieces rather than from Kafka transactions.
+
+1. **Checkpoint order.** A stateful task (aggregate, join) checkpoints by flushing its producer so every output of the input it consumed is acknowledged, then writing a snapshot of its state together with the offset of its next input record (temporary file, fsync, rename), then committing that offset to the group. A crash anywhere restarts from the last snapshot, and the snapshot's offset, not the group's, is where the task resumes, so committed offsets only ever trail the state. Stateless stages (route, labels) commit after their output is acknowledged.
+2. **Deterministic replay.** A restored task re-reads the same input from the same offset with the same state, so it produces the same output sequence again. That makes every resend identical to the original, which is what lets the next stage drop it.
+3. **Dedupe by sequence, in constant memory.** Each stage's output to a given downstream partition is in a fixed order, so the downstream stage keeps one high-water mark per upstream: the highest (payments offset, entity) per payments partition at an aggregator, and the highest payments offset per router and the highest output sequence number per aggregator partition at a joiner. Anything at or below it is a resend. This is the same idea as Kafka's idempotent producer, applied between stages.
+
+Decisions re-sent after a joiner crash are identical lines (the assessment id is derived from the payment id) and the decisions topic is keyed by payment id, so a reader keeps the first per key. `riskgate stream decisions` counts the resends and checks each is identical to the first, ignoring only the wall-clock fields.
+
+The snapshot counters make the claim checkable. Each aggregator snapshot carries how many events it has applied per entity, and each joiner snapshot how many payments it has decided. They roll back with the state on a crash, so at the end of a run their totals equal the number of entity events and payments in the data exactly when nothing was lost or applied twice. Experiment k2 reports that difference after forced crashes.
+
+### Rebalance and state handover
+
+Each stage is a consumer group (cooperative-sticky assignment, franz-go). On revocation a stateful task checkpoints before it lets go. On assignment the new owner restores that partition's snapshot from the shared store and starts fetching at the snapshot's offset (`AdjustFetchOffsetsFn`). A member that dies hands its partitions over after the session timeout, and the new owner resumes from the last periodic snapshot, re-sending what the dead member had already sent, which the next stage drops. With static membership (`-instance-id`), a member that restarts within the session timeout gets its partitions back without a rebalance at all, which is what makes restarts in experiment k2 cheap.
+
+The snapshot store is a directory every process can reach. On one machine that is a local directory. In production it would be an object store, or a compacted changelog topic as Kafka Streams uses. The stateful topics keep their records forever (`retention.ms=-1`), because a partition rebuilt from scratch needs its whole input, and a task that finds a gap in its input offsets stops rather than rebuild state over it.
+
+### Hot keys
+
+An email domain is one key, so all of `gmail.com`'s traffic lands on one aggregator partition whatever the partition count. `streamexp skew` measures it on the data. An aggregator's work per event is one state update (349 ns in experiment 4, on a loaded machine), against a model evaluation per payment in the joiner, which is partitioned by payment id and so spreads evenly. The skew is therefore real and cheap. A system where the per-key work was heavy would split a hot key's count across sub-keys and merge them, which works for counts and sums but not for the distinct-card count without a mergeable sketch.
+
 ## Integration with Clearinghouse
 
 Clearinghouse is the sibling project, a payments ledger in Ruby. It calls RiskGate on every payment confirm, and it reports outcomes back by webhook. The contract is written down in Clearinghouse's `docs/design/interfaces.md`.
@@ -571,6 +628,99 @@ Restart to ready over the 4.16 MB warm snapshot (498,113 payments of history) to
 
 Two things are not settled. First, in kill mode the breaker also opened once in each healthy phase, about 6 to 7 s after each process started, costing about 415 unchecked payments each time. It reproduced in two runs and never happened in freeze mode. Periodic snapshots and GC were ruled out directly. The machine was not idle during either run, so contention is the leading explanation, but a cold-start effect has not been ruled out. Those numbers are not cited until an idle rerun. Second, how many of the unchecked payments were fraud depends on which payments land in the outage window. The fraud count and its dollar cost come from experiment 8's replay, which fails RiskGate the same way.
 
+### Stream experiments
+
+The stream experiments ran on a different machine from experiments 1 to 9: an AMD Ryzen 3 4300U (4 cores, 4 threads, 16 GB), Windows 11, go1.26.5, with Apache Kafka 3.9.1 as one local KRaft broker (`scripts/kafka_local.sh`). `cmd/streamexp` drives them and appends one row per run to `results/stream/*.jsonl` with the commit, the machine, and its load: the whole-machine CPU busy share in the 10 s before the run and during it, the load average inside the WSL VM where another project was benchmarking, and that project's benchmark lock if it held one. The machine was shared with that project throughout, often fully busy before a run started. **So every timing below is not quotable**, and the rows say so (`quotable: false` or `load.quiet: false`). The correctness counts do not depend on load: a mismatch is a mismatch however long the run took.
+
+Before any Kafka run, `cmd/export` was re-run here from the binary cache. Its `encoder.json`, `features.json` and `test_replay.jsonl` came out byte-identical to the files the Mac produced in September, so the reference the stream is compared against is the same one experiment 2 used.
+
+#### k1. Parity through Kafka
+
+**Question.** Does a payment that goes through Kafka get exactly the decision it gets offline and over HTTP?
+**Method.** All 590,540 IEEE-CIS payments, labels stripped, written to an 8-partition payments topic keyed by card in (TransactionDT, TransactionID) order, with heartbeats and the SIMULATED disputes (experiment 7's delay model) on their own topic. Two pipeline processes, each running all four stages, 8 partitions per topic, `models/ieee`, `rules/default.rules`. The decisions topic was read back (`riskgate stream decisions`), sorted into event-time order and checked four ways: by `cmd/serveparity compare`, experiment 2's checker, against a fresh offline replay, `export.csv` and the offline Scorer; line by line against a decision log of the same 590,540 payments sent through `riskgate serve` over HTTP on the same machine (`streamexp httplog`); by `riskgate audit`; and by the snapshot counters. Then a backtest table was built from the decision log alone and every rule of `rules/default.rules` and `rules/baseline.rules` was backtested on it and on the offline table (`riskgate table`'s construction), comparing the reports whole.
+**Result.** Run `k1-20261005T100004` in `results/stream/k1.jsonl`.
+
+| Check | Rows | Differ |
+|---|---|---|
+| Payments with a decision, read back from the topic | 590,540 of 590,540 | 0 lost, 0 duplicate records |
+| Features against the offline replay (53 catalog fields) | 590,540 | 0 |
+| Encoded model inputs against `export.csv` | 590,540 | 0 |
+| Raw score, probability and `risk_score` against the offline Scorer | 590,540 | 0 |
+| Decision, rule, scores and every feature against the HTTP service's decision log | 590,540 | 0 |
+| `riskgate audit` of the streamed decisions | 590,540 | 0 |
+| Entity events applied, from the snapshots, against the data | 1,729,036 against 1,729,036 | 0 |
+| Backtest reports from the topic against the offline table (13 rules) | 13 | 0 (feature and score columns identical, cell for cell) |
+
+Late events 0, order violations 0, events still buffered at the end 0. The pipeline decided all 590,540 payments 302 s after the replay started, about 1,950 per second, with the machine at 100% CPU before and during the run, so that rate is a floor and is not quoted.
+
+**The negative control.** The same run with `-arrival-order` (run `k1-arrival-order-20261005T123348`, `results/stream/k1-arrival-order.jsonl`): aggregators deduplicate but apply events as they arrive, with no watermarks. Every payment still got exactly one decision, and the checks failed the way they should.
+
+| Check | Rows that differ, of 590,540 |
+|---|---|
+| Features against the offline replay | 515,092 (87.2%), led by the email-domain features (495,794 rows) and then device (111,751) |
+| Raw score | 514,816 |
+| `risk_score` | 282,842 (47.9%) |
+| Backtest reports from the topic against the offline table | 13 of 13 rules differ |
+| `riskgate audit` | 0 |
+
+The last row is the useful one. The audit replays each decision from the features it logged, so it proves the decision follows from its inputs, and it passed. Only a comparison against an independent computation of the inputs catches inputs that are wrong. That is why experiment 2 and k1 compare against the offline replay and not just the log against itself. This run also found a bug in that comparison: its report could not be written when a value was missing on one side and present on the other (`internal/stream/BUGLOG.md`), a path no earlier run had exercised because every earlier run had 0 mismatches.
+
+The backtest from the topic can also be labelled from the disputes topic instead of the dataset. Then a fraudulent payment counts as fraud only once its (simulated) dispute has arrived. For `rules/default.rules`'s block rule over the whole period, as of the last payment, that turned 89 fraudulent payments whose disputes were still to come into "legitimate": 204 legitimate payments blocked instead of 115, against the same 5,868 blocked. That is experiment 7's point, label maturity, seen from the production side.
+
+#### k2. Crashes
+
+**Question.** If pipeline processes die at arbitrary moments, is any event lost or counted twice?
+**Method.** Three pipeline processes, each running all four stages with static group membership, replaying all 590,540 payments at 1,200 per second, three times with different seeds. Every 3 to 10 s (uniform, seeded) one process chosen at random was killed with `TerminateProcess`, Windows' SIGKILL (no checkpoint, no commit, no leaving the group), and restarted after a uniform 0 to 2 s. Kills stopped when the replay finished. Checkpoints every 5 s, so a kill loses up to 5 s of a process's work, which its restart redoes. Verification as in k1, plus the snapshot counters, which roll back with the state.
+**Result.** Three runs with different seeds, `results/stream/k2.jsonl`.
+
+| Run | Kills | Payments without a decision | Entity events applied minus 1,729,036 | Payments decided minus 590,540 | Rows differing from offline | Decisions written twice (all identical) | Resends dropped at joiners / aggregators |
+|---|---|---|---|---|---|---|---|
+| `k2-20261005T111230` (seed 1) | 53 | 0 | 0 | 0 | 0 | 65,201 | 179,199 / 225 |
+| `k2-20261005T134254` (seed 2) | 53 | 0 | 0 | 0 | 0 | 54,263 | 162,953 / 339 |
+| `k2-20261005T135659` (seed 3) | 50 | 0 | 0 | 0 | 0 | 50,934 | 156,948 / 253 |
+| **All three** | **156** | **0** | **0** | **0** | **0** | | |
+
+"Rows differing" covers features, model inputs, raw score, probability and `risk_score`, checked by `serveparity compare`, and `riskgate audit` replayed all 590,540 decisions identically in every run. The entity-event and payment counts come from the final snapshots, which roll back with the state on every crash, so an event applied twice or never would show as a nonzero difference.
+
+Restarted processes had all their stages processing again a median 0.36 to 0.53 s after starting (90th percentile 2.7 to 3.2 s), and a partition's snapshot restored in a few milliseconds. Those are timings on a machine running at about 90% CPU during the runs, and are not quotable. The recovery work shows up in the resend counts: each restart redoes up to a checkpoint interval of work, and everything it redoes is dropped downstream rather than counted.
+
+#### k3. Lag and latency
+
+**Question.** How fast can the pipeline go on this machine before it falls behind, and how long does a payment wait for its decision?
+**Method.** For each rate, a fresh pipeline (new topics, empty state, two processes each running every stage) and an open-loop producer that stamps each payment with its scheduled send time and sends the first rate x 60 s payments on schedule, heartbeating every 250 ms. A decision's latency runs from that scheduled time to the moment the joiner wrote it, so a pipeline falling behind shows as latency, not as a slower producer. Lag is the payments the schedule has sent minus the decisions written, sampled every second. Each rate ran in a window when the other project's benchmarks were paused by the shared lock, with its containers still up.
+**Result.** `results/stream/k3.jsonl`. **Not quotable**: the background CPU before the runs was 13% to 40%, and this is a 4-thread laptop chip running the broker, the pipeline and the producer together.
+
+| Payments per second | Decisions per second | p50 | p99 | Largest lag | Backlog left when production ended |
+|---|---|---|---|---|---|
+| 500 to 4,000 | kept pace | 30 to 54 ms | 87 to 336 ms | at most about 1 s of traffic | none |
+| 5,000 | 4,976 | 56 ms | 358 ms | 2,994 payments | none |
+| 6,000 | 4,273 | 78 ms | 29.2 s | 82,547 | 23.9 s to drain |
+| 8,000 | 4,660 | 165 ms | 44.2 s | 152,359 | 42.7 s |
+| 10,000 | 4,833 | 36.5 s | 62.9 s | 338,341 | 62.9 s |
+
+So the ceiling here is between 5,000 and 6,000 payments per second, and above it the backlog grows without bound, as it should with an open-loop source. Most of the pipeline's CPU goes to the joiners' model evaluation (k1's busy-time split), which is the part to scale out. For scale, experiment 5 measured the whole in-process pipeline (features, the 954-tree model, Saabas contributions, rules) at 189 µs a payment on the M3 Pro under load, about 5,300 per core-second before Kafka, JSON and three hops.
+
+#### k4. Rebalance
+
+**Question.** When partitions move between members mid-replay, does their state move with them, exactly?
+**Method.** All 590,540 payments at 1,500 per second, dynamic group membership, session timeout 10 s. One member at the start; a second joined at 61 s and a third at 120 s (scale out); the first was asked to stop at 177 s, so it checkpointed, committed and left (scale in); the second was killed at 236 s with no warning (failure); a fourth joined at 297 s. Every member ran all four stages, so each event moved partitions in four groups at once. Verification as in k1.
+**Result.** Run `k4-20261005T113656` in `results/stream/k4.jsonl`. 0 payments lost, features, model inputs and scores identical to the offline pipeline on all 590,540, `riskgate audit` clean, snapshot counters exactly 1,729,036 entity events and 590,540 payments. 34 partitions were restored from a handed-over snapshot (median 7 ms each). 3,342 decisions were written twice, all identical, and 10,422 resent parts were dropped at the joiners. A clean handover checkpoints at revocation and leaves nothing to redo, so these are the work the new owners redid after the kill, from the dead member's last periodic checkpoint.
+
+Decision latency, from each payment's scheduled send time to its decision, by 5-second window, shows what each kind of move costs. Steady state was a p99 of 60 to 150 ms. A member joining raised a window's p99 to about 0.6 s. The clean scale-in raised it to 1.2 s. The kill stopped decisions on the dead member's partitions for the 10 s session timeout and then for the catch-up, so the next two windows had p99s of 14.7 s and 12.5 s, and then the backlog was gone. The run's CPU averaged 81% on a 4-thread machine shared with another project's benchmarks, so these are indicative shapes, not quotable numbers. The shape is the point: a planned move costs about a second, a crash costs the session timeout, which is the knob that trades failover speed against false failovers.
+
+**The design not taken, measured.** `streamexp naive` partitions the payments by card (the pipeline's own `CardPartition`) and keeps every entity's velocity state per partition, which is what one consumer group keyed by card would compute. It is deterministic, so it runs offline (`results/stream/naive.jsonl`).
+
+| Payments partitions | Payments with any feature different from the export | of which device features | of which email-domain features |
+|---|---|---|---|
+| 1 | 0 | 0 | 0 |
+| 2 | 506,045 (85.7%) | 111,532 | 495,590 |
+| 8 | 506,469 (85.8%) | 114,408 | 495,940 |
+| 16 | 506,498 (85.8%) | 114,571 | 495,955 |
+
+Card and `uid` features were right in every case, as co-partitioning predicts. Device and email features were wrong for 86% of payments as soon as there were two partitions.
+
+**Hot keys** (`results/stream/skew.jsonl`). The 590,540 payments make 1,729,036 entity events. The busiest key is the email domain `gmail.com` with 228,355 of them (13%), then `yahoo.com` (100,934) and the device string `Windows` (47,722). With 8 aggregator partitions the busiest partition gets 1.78 times the mean, with 16 it gets 2.91 times, with 32 it gets 4.96 times, because one key cannot be split. In k1 that partition's aggregator was never the bottleneck: aggregation took about 22 s of busy time across both processes for the whole replay, against about 520 s for the joiners, which run the model.
+
 ## Bug log
 
 Real bugs found by tests, fuzzing and parity checks, each with a regression test.
@@ -588,6 +738,10 @@ Real bugs found by tests, fuzzing and parity checks, each with a regression test
 
 **3D Secure, the fourth action.** Radar evaluates request-3DS rules before allow rules. A 3DS rule asks the cardholder's bank to authenticate the payment, which moves fraud liability and adds friction. RiskGate leaves it out because real 3DS needs a card network and an issuer, and a simulated challenge would be a guess about how often customers abandon a payment, not a result. The rule language already reserves the place. It would be one more action evaluated first, with one more outcome for the backtester to report.
 
+**Rule changes through the stream, in event time.** The stream's joiners load one rule set at start. A live deployment changes rules while payments flow, across every joiner process, and a decision re-made after a crash has to come out the same as the first time. Swapping on arrival of a "new rules" message cannot promise that, because which payments a joiner has decided when the message arrives depends on timing. The fix is the same as for features: put the rule change in event time. A rules topic carries each version with the event time it takes effect from, plus the deployer's own watermark ("no version will take effect before this"), and a joiner decides a payment only when the rules watermark has passed it, with the version in force at the payment's time. Every joiner and every replay then picks the same version for the same payment, and `riskgate audit` already checks decisions per version.
+
+**Serving the stream's state to the synchronous path.** The service and the stream share the feature code, not the state. Reading the aggregators' state from `/v1/assess` (what Kafka Streams calls interactive queries) would make the synchronous check see every payment the platform made, not only the ones it was asked about, at the cost of a network hop to the owning aggregator and features as fresh as the consumer lag.
+
 **Other things, in order.**
 - Label arrival times from Clearinghouse's webhooks instead of a simulation, which experiment 8 starts to provide.
 - Drift monitoring on `risk_score`'s calibration, since a threshold means what it means only while the calibration holds.
@@ -604,6 +758,10 @@ Each entry says what RiskGate took from it. Quotes are short and exact.
 - **IEEE-CIS Fraud Detection** (Kaggle, 2019, sponsored by the IEEE Computational Intelligence Society, data from Vesta Corporation). The dataset, and its rules. https://www.kaggle.com/competitions/ieee-fraud-detection and https://www.kaggle.com/competitions/ieee-fraud-detection/rules
 - **NVIDIA Technical Blog, "Leveraging Machine Learning to Detect Fraud"** (by members of the winning team). The dataset's class balance, "only 3.5% of the transactions are labeled fraudulent". https://developer.nvidia.com/blog/leveraging-machine-learning-to-detect-fraud-tips-to-developing-a-winning-kaggle-solution/
 - **Chris Deotte and Konstantin Yakovlev (team FraudSquad), first-place solution, parts 1 and 2.** The `uid` reconstruction from `card1`, `addr1` and `D1`, which RiskGate uses as one entity key. Part 1 names "the three columns card1, addr1, and D1". The winning private-leaderboard AUC, 0.945884, is read from the competition leaderboard and quoted only as context. https://www.kaggle.com/competitions/ieee-fraud-detection/discussion/111284 and https://www.kaggle.com/competitions/ieee-fraud-detection/discussion/111308
+- **Tyler Akidau et al., "The Dataflow Model"** (VLDB 2015). Event time against processing time, and watermarks as a source's promise about how far event time has progressed, which is what the router's watermarks are. https://doi.org/10.14778/2824032.2824076
+- **Apache Flink documentation, "Timely Stream Processing"**. Per-input-channel watermarks with the minimum taken across channels, and idle sources holding watermarks back, the problem the producer's heartbeats solve. https://nightlies.apache.org/flink/flink-docs-stable/docs/concepts/time/
+- **Apache Kafka documentation**, consumer groups, the cooperative-sticky assignor and static membership (KIP-345), and Kafka Streams' repartition topics and changelog-backed state, which the pipeline's design follows and departs from (snapshots instead of a changelog). https://kafka.apache.org/documentation/
+- **franz-go** (Travis Bischel), the Kafka client, and its `kfake` in-process cluster, which runs the stream tests without a broker. https://github.com/twmb/franz-go
 - **Martin Kleppmann, *Designing Data-Intensive Applications*** (O'Reilly, first edition, 2017), chapter 11, "Stream Processing". Event time against processing time, and window types. The second edition (2026) renumbers the chapters, so the citation is to the first. https://www.oreilly.com/library/view/designing-data-intensive-applications/9781491903063/ch11.html
 - **Ando Saabas, "Interpreting random forests"** (2014), and the `treeinterpreter` package. The contribution method behind RiskGate's reasons, "a sum of feature contributions". http://blog.datadive.net/interpreting-random-forests/
 - **Scott Lundberg, Gabriel Erion and Su-In Lee, "Consistent Individualized Feature Attribution for Tree Ensembles"** (2018). TreeSHAP, and the argument that "the gain, split count, and Saabas methods are all inconsistent". https://arxiv.org/abs/1802.03888

@@ -183,6 +183,51 @@ func (e *Engine) ScoreAndUpdate(t *data.Txn, row schema.Row) {
 	e.maybeEvict(t.DT)
 }
 
+// The stream pipeline (internal/stream) partitions velocity state by entity
+// key, so one payment's features are computed in up to four places and
+// joined. These four methods are ScoreAndUpdate taken apart along the same
+// seams, calling the same fill functions; ScoreAndUpdate equals FillRaw, then
+// ScoreAndUpdateEntity or FillMissing for each entity in order.
+
+// FillRaw writes t's raw fields into row, sets risk_score and every field
+// the engine does not produce to missing, and leaves velocity slots alone.
+func (e *Engine) FillRaw(t *data.Txn, row schema.Row) { e.fillRaw(t, row) }
+
+// FillMissing marks every velocity feature of ent missing in row.
+func (e *Engine) FillMissing(ent Entity, row schema.Row) { e.fillMissing(ent, row) }
+
+// ScoreAndUpdateEntity is ScoreAndUpdate for one entity: it reads and
+// updates t's key for ent in one step and writes that entity's features into
+// row. It reports false, writing nothing and changing nothing, when t has no
+// key for ent. Only that entity's slots (EntitySlots) are written.
+func (e *Engine) ScoreAndUpdateEntity(t *data.Txn, ent Entity, row schema.Row) bool {
+	keys, ok := KeysOf(t)
+	if !ok[ent] {
+		return false
+	}
+	a := e.st.ReadAdd(keys[ent], EventOf(t))
+	e.fillEntity(ent, &a, t, row)
+	e.maybeEvict(t.DT)
+	return true
+}
+
+// EntitySlots returns the numeric row slots ent's features occupy, in a fixed
+// order: counts and sums per window, mean, ratio, seconds since first and
+// last, then distinct cards for the entities that have it. The stream ships
+// an entity's features as these values in this order.
+func (e *Engine) EntitySlots(ent Entity) []int {
+	s := &e.vel[ent]
+	out := make([]int, 0, 2*NumWindows+5)
+	for w := range NumWindows {
+		out = append(out, s.count[w], s.sum[w])
+	}
+	out = append(out, s.mean, s.ratio, s.sinceFirst, s.sinceLast)
+	if s.distinct >= 0 {
+		out = append(out, s.distinct)
+	}
+	return out
+}
+
 func (e *Engine) maybeEvict(now int64) {
 	if e.evictEvery > 0 && e.updates.Add(1)%e.evictEvery == 0 {
 		e.st.EvictIdle(now)

@@ -112,3 +112,25 @@ func TestEq(t *testing.T) {
 		t.Fatal("absDiff")
 	}
 }
+
+// TestReportEncodesWithMissingAgainstPresent: a value missing on one side and
+// present on the other has an infinite difference, which JSON cannot hold.
+// The report counted it into the maximum and its encoding failed silently,
+// leaving an empty file exactly when a run had mismatches. Found by the
+// stream pipeline's arrival-order control (internal/stream/BUGLOG.md).
+func TestReportEncodesWithMissingAgainstPresent(t *testing.T) {
+	var s, st splitStats
+	if d := absDiff(math.NaN(), 3); !math.IsInf(d, 1) {
+		t.Fatalf("absDiff(NaN, 3) = %v", d)
+	}
+	st.MissingAgainstPresent = 1
+	st.MaxAbsFeatureDiff = 2
+	add(&s, &st)
+	b, err := json.Marshal(compareReport{All: s, BySplit: map[string]*splitStats{"test": &s}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"values_missing_against_present":1`) {
+		t.Fatalf("report %s", b)
+	}
+}

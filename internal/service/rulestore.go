@@ -372,3 +372,19 @@ func canonicalLists(b []byte) (json.RawMessage, error) {
 	}
 	return json.Marshal(v) // encoding/json sorts map keys
 }
+
+// CompileRules compiles a rule set exactly as the service deploys one
+// (named lists, checks, lint) and, given a history directory, records it
+// there as version, so `riskgate audit` can replay decisions made with it.
+// The stream pipeline's joiner uses it.
+func CompileRules(cat *schema.Catalog, text string, listsJSON []byte, version uint64, historyDir string) (*rules.RuleSet, error) {
+	s := newRuleStore(cat, historyDir, time.Now)
+	rs, canon, err := s.compile(text, listsJSON, version)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.persist(version, text, canon); err != nil {
+		return nil, err
+	}
+	return rs, nil
+}
