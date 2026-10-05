@@ -16,7 +16,7 @@ Short answers to the questions RiskGate has to survive, each tied to the code an
 | Naive backtest understatement of fraud dollars (**simulated** delays) | 80% to 88%, 4% to 6% with 60-day maturity | `results/label_delay/README.md` |
 | `rules/default.rules` on validation | 39.1% precision, 31.1% recall, 1.71% FPR, 35.7% fraud-dollar recall | `results/rules_default/TUNING.md` |
 | All 590,540 payments through the Kafka pipeline, against the offline pipeline and the HTTP service | 0 mismatches (features, inputs, scores, decisions); audit 590,540/590,540 | `results/stream/k1.jsonl` |
-| Pipeline processes killed mid-replay | 53 kills, 0 payments lost, 0 events applied twice (1,729,036 of 1,729,036) | `results/stream/k2.jsonl` |
+| Pipeline processes killed mid-replay | 156 kills over 3 runs, 0 payments lost, 0 events applied twice (1,729,036 of 1,729,036 each run) | `results/stream/k2.jsonl` |
 | Partitions moved mid-replay (scale out, scale in, kill) | 0 mismatches, 34 snapshot handovers | `results/stream/k4.jsonl` |
 | One consumer group partitioned by card, offline | 85.7% of payments get a wrong device or email-domain feature | `results/stream/naive.jsonl` |
 
@@ -178,7 +178,7 @@ The email entity is the purchaser email **domain**, because that is all the data
 1. A stateful task checkpoints in a fixed order: flush the producer, write a snapshot of state plus the next input offset, then commit the offset. On restart it resumes at the snapshot's offset, not the group's, so committed offsets only trail state.
 2. Replay is deterministic, so whatever a restored task re-sends is identical to what it sent before.
 3. Every downstream stage keeps one high-water mark per upstream (payments offset and entity at the aggregator; offset per router and output sequence number per aggregator at the joiner) and drops anything at or below it. Constant memory, the same idea as Kafka's idempotent producer.
-The snapshots carry their own counters, events applied and payments decided, which roll back with the state, so after a crash test their totals equal the data's exactly or something was lost or doubled. K2: 53 processes killed at random moments during a full replay, 0 payments without a decision, the snapshots counting exactly the 1,729,036 entity events in the data and 590,540 decisions, every feature still bit-identical, and 65,201 decisions written twice, each identical to the first.
+The snapshots carry their own counters, events applied and payments decided, which roll back with the state, so after a crash test their totals equal the data's exactly or something was lost or doubled. K2: 156 processes killed at random moments over three full replays, 0 payments without a decision, the snapshots counting exactly the 1,729,036 entity events in the data and 590,540 decisions every time, every feature still bit-identical, and every decision written twice identical to the first.
 
 **Why not Kafka transactions?** They give exactly-once from topic to topic, which would cover the stateless router. The state is the hard part: Kafka Streams makes it transactional by writing every state change to a changelog topic in the same transaction, which is a write per update. A snapshot every few seconds plus deterministic replay plus sequence dedupe gets the same effect with far fewer writes, and it was simpler to test. The cost is that a decision can be written twice after a joiner crash. It is the identical line, keyed by payment id, and readers keep one per key.
 
@@ -190,7 +190,7 @@ The snapshots carry their own counters, events applied and payments decided, whi
 
 **Hard questions.**
 - *"Your producer writes in event-time order. Real producers don't."* Within a partition they usually do, because a payment service publishes from an ordered log (an outbox table, CDC). Across partitions they don't, and that is exactly what the watermarks handle. What the design does not handle is a single partition out of order. The router counts it, and the aggregator would apply such an event as late, at the key's latest time, the same rule the online service uses. A system that expected it would buffer with an allowed lateness.
-- *"Latency?"* [K3 RESULT]. The floor is the watermark: an event waits for the slowest payments partition's heartbeat. That is the price of exact event-time order.
+- *"Latency? Throughput?"* Measured, not quotable: the machine was a shared 4-thread laptop chip running the broker, the pipeline and the producer. It kept up through 5,000 payments a second, p50 30 to 56 ms and p99 under 400 ms, and fell behind from 6,000. The floor is the watermark: an event waits for the slowest payments partition's heartbeat. That is the price of exact event-time order.
 - *"Why is the snapshot store a directory?"* On one machine it is the simplest thing every process can reach. In production it would be object storage, or a compacted changelog topic as Kafka Streams does.
 - *"How does the synchronous checkout path use this?"* It doesn't yet. Today the stream is an asynchronous decision path with the same features and rules. Serving the stream's state to the synchronous path is a read from the owning aggregator (Kafka Streams calls it interactive queries), and the consistency question becomes freshness: the synchronous read sees state as of the consumer's lag.
 

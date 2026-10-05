@@ -670,21 +670,19 @@ The backtest from the topic can also be labelled from the disputes topic instead
 #### k2. Crashes
 
 **Question.** If pipeline processes die at arbitrary moments, is any event lost or counted twice?
-**Method.** Three pipeline processes, each running all four stages with static group membership, replaying all 590,540 payments at 1,200 per second. Every 3 to 10 s (uniform, seeded) one process chosen at random was killed with `TerminateProcess`, Windows' SIGKILL (no checkpoint, no commit, no leaving the group), and restarted after a uniform 0 to 2 s. Kills stopped when the replay finished. Checkpoints every 5 s, so a kill loses up to 5 s of a process's work, which its restart redoes. Verification as in k1, plus the snapshot counters, which roll back with the state.
-**Result.** Run `k2-20261005T111230` in `results/stream/k2.jsonl`.
+**Method.** Three pipeline processes, each running all four stages with static group membership, replaying all 590,540 payments at 1,200 per second, three times with different seeds. Every 3 to 10 s (uniform, seeded) one process chosen at random was killed with `TerminateProcess`, Windows' SIGKILL (no checkpoint, no commit, no leaving the group), and restarted after a uniform 0 to 2 s. Kills stopped when the replay finished. Checkpoints every 5 s, so a kill loses up to 5 s of a process's work, which its restart redoes. Verification as in k1, plus the snapshot counters, which roll back with the state.
+**Result.** Three runs with different seeds, `results/stream/k2.jsonl`.
 
-| What | Result |
-|---|---|
-| Processes killed mid-replay | 53 (21, 17 and 15 per process) |
-| Payments without a decision | 0 of 590,540 |
-| Entity events applied, per the snapshots, minus the data's 1,729,036 | 0 |
-| Payments decided, per the snapshots, minus 590,540 | 0 |
-| Features, model inputs and scores against the offline pipeline | 0 rows differ |
-| `riskgate audit` | 590,540 of 590,540 replayed identically |
-| Decisions written twice (re-sent after a joiner restart) | 65,201, every one identical to the first |
-| Resent records dropped by the high-water marks | 179,199 parts at the joiners, 225 entity events at the aggregators |
+| Run | Kills | Payments without a decision | Entity events applied minus 1,729,036 | Payments decided minus 590,540 | Rows differing from offline | Decisions written twice (all identical) | Resends dropped at joiners / aggregators |
+|---|---|---|---|---|---|---|---|
+| `k2-20261005T111230` (seed 1) | 53 | 0 | 0 | 0 | 0 | 65,201 | 179,199 / 225 |
+| `k2-20261005T134254` (seed 2) | 53 | 0 | 0 | 0 | 0 | 54,263 | 162,953 / 339 |
+| `k2-20261005T135659` (seed 3) | 50 | 0 | 0 | 0 | 0 | 50,934 | 156,948 / 253 |
+| **All three** | **156** | **0** | **0** | **0** | **0** | | |
 
-Restarted processes had all their stages processing again a median 0.45 s after starting (90th percentile 3.1 s, slowest 8.7 s), and a partition's snapshot restored in a median 4 ms. Those are timings on a machine running at 92% CPU on average during the run, and are not quotable. The recovery work shows up in the resend counts: each restart redoes up to a checkpoint interval of work, and everything it redoes is dropped downstream rather than counted.
+"Rows differing" covers features, model inputs, raw score, probability and `risk_score`, checked by `serveparity compare`, and `riskgate audit` replayed all 590,540 decisions identically in every run. The entity-event and payment counts come from the final snapshots, which roll back with the state on every crash, so an event applied twice or never would show as a nonzero difference.
+
+Restarted processes had all their stages processing again a median 0.36 to 0.53 s after starting (90th percentile 2.7 to 3.2 s), and a partition's snapshot restored in a few milliseconds. Those are timings on a machine running at about 90% CPU during the runs, and are not quotable. The recovery work shows up in the resend counts: each restart redoes up to a checkpoint interval of work, and everything it redoes is dropped downstream rather than counted.
 
 #### k3. Lag and latency
 
