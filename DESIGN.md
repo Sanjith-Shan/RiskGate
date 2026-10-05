@@ -653,6 +653,18 @@ Before any Kafka run, `cmd/export` was re-run here from the binary cache. Its `e
 
 Late events 0, order violations 0, events still buffered at the end 0. The pipeline decided all 590,540 payments 302 s after the replay started, about 1,950 per second, with the machine at 100% CPU before and during the run, so that rate is a floor and is not quoted.
 
+**The negative control.** The same run with `-arrival-order` (run `k1-arrival-order-20261005T123348`, `results/stream/k1-arrival-order.jsonl`): aggregators deduplicate but apply events as they arrive, with no watermarks. Every payment still got exactly one decision, and the checks failed the way they should.
+
+| Check | Rows that differ, of 590,540 |
+|---|---|
+| Features against the offline replay | 515,092 (87.2%), led by the email-domain features (495,794 rows) and then device (111,751) |
+| Raw score | 514,816 |
+| `risk_score` | 282,842 (47.9%) |
+| Backtest reports from the topic against the offline table | 13 of 13 rules differ |
+| `riskgate audit` | 0 |
+
+The last row is the useful one. The audit replays each decision from the features it logged, so it proves the decision follows from its inputs, and it passed. Only a comparison against an independent computation of the inputs catches inputs that are wrong. That is why experiment 2 and k1 compare against the offline replay and not just the log against itself. This run also found a bug in that comparison: its report could not be written when a value was missing on one side and present on the other (`internal/stream/BUGLOG.md`), a path no earlier run had exercised because every earlier run had 0 mismatches.
+
 The backtest from the topic can also be labelled from the disputes topic instead of the dataset. Then a fraudulent payment counts as fraud only once its (simulated) dispute has arrived. For `rules/default.rules`'s block rule over the whole period, as of the last payment, that turned 89 fraudulent payments whose disputes were still to come into "legitimate": 204 legitimate payments blocked instead of 115, against the same 5,868 blocked. That is experiment 7's point, label maturity, seen from the production side.
 
 #### k2. Crashes
