@@ -45,37 +45,71 @@ const DefaultLogBuffer = 16384
 // DefaultFlushInterval bounds how long a record sits in the write buffer.
 const DefaultFlushInterval = 200 * time.Millisecond
 
-// logRecord is one decision. It is pooled; the slices keep their capacity.
-type logRecord struct {
-	assessmentID [assessmentIDLen]byte
-	paymentID    string
-	created      int64
-	at           int64 // wall clock, Unix milliseconds
-	version      uint64
-	action       rules.Action
-	ruleID       string
-	shadow       []string
-	scored       bool
-	riskScore    int
-	prob, raw    float64
-	num          []float64
-	str          []string
-	bias         float64
-	contrib      []float64
-	latency      time.Duration
-	deadlineMs   int64
+// DecisionRecord is one decision as the log records it. The service fills
+// one per assessment; the stream pipeline (internal/stream) fills one per
+// payment it decides and publishes the same line to its decisions topic, so
+// `riskgate audit` and the parity checks read either.
+type DecisionRecord struct {
+	AssessmentID [assessmentIDLen]byte
+	PaymentID    string
+	Created      int64
+	At           int64 // wall clock, Unix milliseconds
+	Version      uint64
+	Action       rules.Action
+	RuleID       string
+	Shadow       []string
+	Scored       bool
+	RiskScore    int
+	Prob, Raw    float64
+	Num          []float64
+	Str          []string
+	Bias         float64
+	Contrib      []float64
+	Latency      time.Duration
+	DeadlineMs   int64
+}
 
+// NewDecisionRecord returns a record sized for cat and nIn model inputs.
+func NewDecisionRecord(cat *schema.Catalog, nIn int) *DecisionRecord {
+	return &DecisionRecord{
+		Num:     make([]float64, cat.NumCount()),
+		Str:     make([]string, cat.StrCount()),
+		Contrib: make([]float64, nIn),
+	}
+}
+
+// logRecord is a pooled DecisionRecord on its way to the writer.
+type logRecord struct {
+	DecisionRecord
 	barrier chan struct{} // non-nil: a Sync marker, not a decision
 }
 
-// DecisionLog writes records in the background. The zero value is not
-// usable; see NewDecisionLog. A nil *DecisionLog discards everything.
-type DecisionLog struct {
+// DecisionEncoder renders DecisionRecords as decision-log lines.
+type DecisionEncoder struct {
 	cat          *schema.Catalog
 	modelInputs  []string // contribution names, in model order
 	topN         int      // contributions to log; <= 0 means all
 	catalogStamp string
 	modelSHA256  string // model.Scorer.SHA256; "" when unknown
+}
+
+// NewDecisionEncoder builds an encoder. modelInputs names the contribution
+// entries and modelSHA256 identifies the model (nil and "" when there is no
+// model); topN bounds the contributions written, largest first (<= 0: all).
+func NewDecisionEncoder(cat *schema.Catalog, modelInputs []string, modelSHA256 string, topN int) *DecisionEncoder {
+	return &DecisionEncoder{cat: cat, modelInputs: modelInputs, topN: topN, catalogStamp: catalogStamp(cat), modelSHA256: modelSHA256}
+}
+
+// Append appends r as one JSON line, newline included.
+func (l *DecisionEncoder) Append(b []byte, r *DecisionRecord) []byte {
+	b, _ = l.encode(b, r, nil)
+	return b
+}
+
+// DecisionLog writes records in the background. The zero value is not
+// usable; see NewDecisionLog. A nil *DecisionLog discards everything.
+type DecisionLog struct {
+	*DecisionEncoder
 
 	ch   chan *logRecord
 	pool sync.Pool
@@ -112,17 +146,13 @@ func newDecisionLog(f *os.File, cat *schema.Catalog, modelInputs []string, model
 		flushEvery = DefaultFlushInterval
 	}
 	l := &DecisionLog{
-		cat: cat, modelInputs: modelInputs, topN: topN, catalogStamp: catalogStamp(cat), modelSHA256: modelSHA256,
-		ch: make(chan *logRecord, buffer), done: make(chan struct{}),
+		DecisionEncoder: NewDecisionEncoder(cat, modelInputs, modelSHA256, topN),
+		ch:              make(chan *logRecord, buffer), done: make(chan struct{}),
 		f: f, w: bufio.NewWriterSize(f, 256<<10),
 	}
 	nIn := len(modelInputs)
 	l.pool.New = func() any {
-		return &logRecord{
-			num:     make([]float64, cat.NumCount()),
-			str:     make([]string, cat.StrCount()),
-			contrib: make([]float64, nIn),
-		}
+		return &logRecord{DecisionRecord: *NewDecisionRecord(cat, nIn)}
 	}
 	go l.run(flushEvery)
 	return l
@@ -150,8 +180,8 @@ func (l *DecisionLog) put(r *logRecord) {
 }
 
 func (l *DecisionLog) recycle(r *logRecord) {
-	r.shadow = r.shadow[:0]
-	r.paymentID, r.ruleID = "", ""
+	r.Shadow = r.Shadow[:0]
+	r.PaymentID, r.RuleID = "", ""
 	l.pool.Put(r)
 }
 
@@ -217,7 +247,7 @@ func (l *DecisionLog) run(flushEvery time.Duration) {
 				close(r.barrier)
 				continue
 			}
-			buf, order = l.encode(buf[:0], r, order)
+			buf, order = l.encode(buf[:0], &r.DecisionRecord, order)
 			l.recycle(r)
 			if _, err := l.w.Write(buf); err != nil {
 				l.writeErrs.Add(1)
@@ -253,29 +283,29 @@ func catalogStamp(cat *schema.Catalog) string {
 
 // encode renders r as one JSON line. Field names are short but readable;
 // LogEntry is the matching decoder.
-func (l *DecisionLog) encode(b []byte, r *logRecord, order []int) ([]byte, []int) {
+func (l *DecisionEncoder) encode(b []byte, r *DecisionRecord, order []int) ([]byte, []int) {
 	b = append(b, '{')
 	b = appendKey(b, "assessment_id", true)
-	b = appendString(b, string(r.assessmentID[:]))
+	b = appendString(b, string(r.AssessmentID[:]))
 	b = appendKey(b, "payment_id", false)
-	b = appendString(b, r.paymentID)
+	b = appendString(b, r.PaymentID)
 	b = appendKey(b, "created", false)
-	b = strconv.AppendInt(b, r.created, 10)
+	b = strconv.AppendInt(b, r.Created, 10)
 	b = appendKey(b, "at_ms", false)
-	b = strconv.AppendInt(b, r.at, 10)
+	b = strconv.AppendInt(b, r.At, 10)
 	b = appendKey(b, "ruleset_version", false)
-	b = strconv.AppendUint(b, r.version, 10)
+	b = strconv.AppendUint(b, r.Version, 10)
 	b = appendKey(b, "decision", false)
-	b = appendString(b, r.action.String())
+	b = appendString(b, r.Action.String())
 	b = appendKey(b, "rule_id", false)
-	if r.ruleID == "" {
+	if r.RuleID == "" {
 		b = append(b, "null"...)
 	} else {
-		b = appendString(b, r.ruleID)
+		b = appendString(b, r.RuleID)
 	}
 	b = appendKey(b, "shadow_matches", false)
 	b = append(b, '[')
-	for i, id := range r.shadow {
+	for i, id := range r.Shadow {
 		if i > 0 {
 			b = append(b, ',')
 		}
@@ -283,18 +313,18 @@ func (l *DecisionLog) encode(b []byte, r *logRecord, order []int) ([]byte, []int
 	}
 	b = append(b, ']')
 	b = appendKey(b, "scored", false)
-	b = strconv.AppendBool(b, r.scored)
+	b = strconv.AppendBool(b, r.Scored)
 	b = appendKey(b, "risk_score", false)
-	b = strconv.AppendInt(b, int64(r.riskScore), 10)
+	b = strconv.AppendInt(b, int64(r.RiskScore), 10)
 	b = appendKey(b, "probability", false)
-	b = appendFloat(b, r.prob)
+	b = appendFloat(b, r.Prob)
 	b = appendKey(b, "raw_score", false)
-	b = appendFloat(b, r.raw)
+	b = appendFloat(b, r.Raw)
 	b = appendKey(b, "latency_us", false)
-	b = strconv.AppendFloat(b, float64(r.latency)/1e3, 'f', 1, 64)
-	if r.deadlineMs > 0 {
+	b = strconv.AppendFloat(b, float64(r.Latency)/1e3, 'f', 1, 64)
+	if r.DeadlineMs > 0 {
 		b = appendKey(b, "deadline_ms", false)
-		b = strconv.AppendInt(b, r.deadlineMs, 10)
+		b = strconv.AppendInt(b, r.DeadlineMs, 10)
 	}
 	b = appendKey(b, "catalog", false)
 	b = appendString(b, l.catalogStamp)
@@ -312,8 +342,8 @@ func (l *DecisionLog) encode(b []byte, r *logRecord, order []int) ([]byte, []int
 			b = append(b, ',')
 		}
 		if f.Kind == schema.Number {
-			b = appendFloat(b, r.num[f.Slot])
-		} else if s := r.str[f.Slot]; s == "" {
+			b = appendFloat(b, r.Num[f.Slot])
+		} else if s := r.Str[f.Slot]; s == "" {
 			b = append(b, "null"...)
 		} else {
 			b = appendString(b, s)
@@ -321,26 +351,26 @@ func (l *DecisionLog) encode(b []byte, r *logRecord, order []int) ([]byte, []int
 	}
 	b = append(b, ']')
 
-	if r.scored {
+	if r.Scored {
 		// Saabas contributions in log-odds, largest magnitude first, so a
 		// reader sees what drove the score without sorting.
 		order = order[:0]
-		for i := range r.contrib {
+		for i := range r.Contrib {
 			order = append(order, i)
 		}
 		slices.SortFunc(order, func(i, j int) int {
-			return cmp.Or(cmp.Compare(abs(r.contrib[j]), abs(r.contrib[i])), cmp.Compare(i, j))
+			return cmp.Or(cmp.Compare(abs(r.Contrib[j]), abs(r.Contrib[i])), cmp.Compare(i, j))
 		})
 		if l.topN > 0 && len(order) > l.topN {
 			order = order[:l.topN]
 		}
 		b = appendKey(b, "bias", false)
-		b = appendFloat(b, r.bias)
+		b = appendFloat(b, r.Bias)
 		b = appendKey(b, "contributions", false)
 		b = append(b, '{')
 		for k, i := range order {
 			b = appendKey(b, l.modelInputs[i], k == 0)
-			b = appendFloat(b, r.contrib[i])
+			b = appendFloat(b, r.Contrib[i])
 		}
 		b = append(b, '}')
 	}

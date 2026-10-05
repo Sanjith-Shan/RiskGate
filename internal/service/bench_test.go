@@ -139,7 +139,7 @@ func BenchmarkAssessPipeline(b *testing.B) {
 	for i, p := range stream {
 		req := &assessRequest{PaymentID: p.ID, Created: p.Created, Amount: p.Cents, RiskFields: p.Fields}
 		var err error
-		if txns[i], err = s.txnOf(req); err != nil {
+		if txns[i], err = txnOf(req); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -227,7 +227,7 @@ func BenchmarkModel(b *testing.B) {
 	stream := benchPayments(b, 24)
 	rows := make([]schema.Row, len(stream))
 	for i, p := range stream {
-		t, err := s.txnOf(&assessRequest{PaymentID: p.ID, Created: p.Created, Amount: p.Cents, RiskFields: p.Fields})
+		t, err := txnOf(&assessRequest{PaymentID: p.ID, Created: p.Created, Amount: p.Cents, RiskFields: p.Fields})
 		if err != nil {
 			b.Fatal(err)
 		}

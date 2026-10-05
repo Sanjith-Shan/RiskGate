@@ -117,6 +117,23 @@ func OpenLabelStore(path string) (*LabelStore, error) {
 	return s, nil
 }
 
+// OpenLabelLog opens the label log at path and applies every record in it,
+// for a process that keeps labels without a service snapshot (the stream
+// pipeline's label consumer). It returns how many bytes of a torn final line
+// it cut off.
+func OpenLabelLog(path string) (*LabelStore, int, error) {
+	s, err := OpenLabelStore(path)
+	if err != nil {
+		return nil, 0, err
+	}
+	torn, err := s.replayLog()
+	if err != nil {
+		_ = s.Close()
+		return nil, 0, err
+	}
+	return s, torn, nil
+}
+
 // replayLog applies every log record after the current sequence number and
 // returns how many bytes of a torn final line it cut off. Called at
 // startup, after any snapshot restore.

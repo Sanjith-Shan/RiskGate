@@ -3,6 +3,7 @@
 //	riskgate [serve] [flags]   run the HTTP service (the default)
 //	riskgate table [flags]     build the backtest feature table from the dataset
 //	riskgate audit [flags]     replay a decision log and check every decision
+//	riskgate stream <command>  the Kafka pipeline: topics, run, produce, decisions
 //
 // Every serve flag can also be set from the environment as RISKGATE_<NAME>,
 // with dashes as underscores: -snapshot-dir is RISKGATE_SNAPSHOT_DIR. A flag
@@ -36,8 +37,10 @@ func main() {
 		if err == nil && !ok {
 			os.Exit(1)
 		}
+	case "stream":
+		err = streamCmd(args)
 	default:
-		fmt.Fprintf(os.Stderr, "riskgate: unknown command %q (want serve, table or audit)\n", cmd)
+		fmt.Fprintf(os.Stderr, "riskgate: unknown command %q (want serve, table, audit or stream)\n", cmd)
 		os.Exit(2)
 	}
 	if err != nil {

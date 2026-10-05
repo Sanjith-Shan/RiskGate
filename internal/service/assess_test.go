@@ -153,12 +153,12 @@ func TestAssessAmountPrecedence(t *testing.T) {
 	defer s.Close()
 	req := &assessRequest{PaymentID: "txn_7", Created: data.ReplayEpochUnix + 86400, Amount: 1235,
 		RiskFields: map[string]any{"TransactionAmt": 12.345}}
-	tx, err := s.txnOf(req)
+	tx, err := txnOf(req)
 	if err != nil || tx.Amount != 12.345 || tx.ID != 7 || tx.DT != 86400 {
 		t.Fatalf("with TransactionAmt: %+v, %v", tx, err)
 	}
 	req.RiskFields = map[string]any{}
-	if tx, _ = s.txnOf(req); tx.Amount != 12.35 {
+	if tx, _ = txnOf(req); tx.Amount != 12.35 {
 		t.Fatalf("from cents: %v", tx.Amount)
 	}
 }
