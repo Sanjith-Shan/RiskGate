@@ -653,6 +653,33 @@ Late events 0, order violations 0, events still buffered at the end 0. The pipel
 
 The backtest from the topic can also be labelled from the disputes topic instead of the dataset. Then a fraudulent payment counts as fraud only once its (simulated) dispute has arrived. For `rules/default.rules`'s block rule over the whole period, as of the last payment, that turned 89 fraudulent payments whose disputes were still to come into "legitimate": 204 legitimate payments blocked instead of 115, against the same 5,868 blocked. That is experiment 7's point, label maturity, seen from the production side.
 
+#### k2. Crashes
+
+**Question.** If pipeline processes die at arbitrary moments, is any event lost or counted twice?
+**Method.** Three pipeline processes, each running all four stages with static group membership, replaying all 590,540 payments at 1,200 per second. Every 3 to 10 s (uniform, seeded) one process chosen at random was killed with `TerminateProcess`, Windows' SIGKILL (no checkpoint, no commit, no leaving the group), and restarted after a uniform 0 to 2 s. Kills stopped when the replay finished. Checkpoints every 5 s, so a kill loses up to 5 s of a process's work, which its restart redoes. Verification as in k1, plus the snapshot counters, which roll back with the state.
+**Result.** Run `k2-20261005T111230` in `results/stream/k2.jsonl`.
+
+| What | Result |
+|---|---|
+| Processes killed mid-replay | 53 (21, 17 and 15 per process) |
+| Payments without a decision | 0 of 590,540 |
+| Entity events applied, per the snapshots, minus the data's 1,729,036 | 0 |
+| Payments decided, per the snapshots, minus 590,540 | 0 |
+| Features, model inputs and scores against the offline pipeline | 0 rows differ |
+| `riskgate audit` | 590,540 of 590,540 replayed identically |
+| Decisions written twice (re-sent after a joiner restart) | 65,201, every one identical to the first |
+| Resent records dropped by the high-water marks | 179,199 parts at the joiners, 225 entity events at the aggregators |
+
+Restarted processes had all their stages processing again a median 0.45 s after starting (90th percentile 3.1 s, slowest 8.7 s), and a partition's snapshot restored in a median 4 ms. Those are timings on a machine running at 92% CPU on average during the run, and are not quotable. The recovery work shows up in the resend counts: each restart redoes up to a checkpoint interval of work, and everything it redoes is dropped downstream rather than counted.
+
+#### k4. Rebalance
+
+**Question.** When partitions move between members mid-replay, does their state move with them, exactly?
+**Method.** All 590,540 payments at 1,500 per second, dynamic group membership, session timeout 10 s. One member at the start; a second joined at 61 s and a third at 120 s (scale out); the first was asked to stop at 177 s, so it checkpointed, committed and left (scale in); the second was killed at 236 s with no warning (failure); a fourth joined at 297 s. Every member ran all four stages, so each event moved partitions in four groups at once. Verification as in k1.
+**Result.** Run `k4-20261005T113656` in `results/stream/k4.jsonl`. 0 payments lost, features, model inputs and scores identical to the offline pipeline on all 590,540, `riskgate audit` clean, snapshot counters exactly 1,729,036 entity events and 590,540 payments. 34 partitions were restored from a handed-over snapshot (median 7 ms each). 3,342 decisions were written twice, all identical, and 10,422 resent parts were dropped at the joiners: the work redone by owners that resumed from a checkpoint older than the last record processed, which happens after the kill and whenever a revoked partition's last batch overlapped a handover.
+
+Decision latency, from each payment's scheduled send time to its decision, by 5-second window, shows what each kind of move costs. Steady state was a p99 of 60 to 150 ms. A member joining raised a window's p99 to about 0.6 s. The clean scale-in raised it to 1.2 s. The kill stopped decisions on the dead member's partitions for the 10 s session timeout and then for the catch-up, so the next two windows had p99s of 14.7 s and 12.5 s, and then the backlog was gone. The run's CPU averaged 81% on a 4-thread machine shared with another project's benchmarks, so these are indicative shapes, not quotable numbers. The shape is the point: a planned move costs about a second, a crash costs the session timeout, which is the knob that trades failover speed against false failovers.
+
 **The design not taken, measured.** `streamexp naive` partitions the payments by card (the pipeline's own `CardPartition`) and keeps every entity's velocity state per partition, which is what one consumer group keyed by card would compute. It is deterministic, so it runs offline (`results/stream/naive.jsonl`).
 
 | Payments partitions | Payments with any feature different from the export | of which device features | of which email-domain features |
