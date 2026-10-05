@@ -2,13 +2,13 @@ package stream
 
 import (
 	"bufio"
-	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -137,12 +137,16 @@ func ReadTopic(ctx context.Context, brokers []string, topic string, fn func(*kgo
 var StallTimeout = 3 * time.Minute
 
 // DecisionSet is the decisions topic read back and deduplicated by payment
-// id.
+// id. The first line seen per payment is kept in a spill file, with only an
+// index in memory, so reading 590,540 decisions costs tens of megabytes, not
+// the gigabyte the lines themselves take.
 type DecisionSet struct {
-	Lines      map[string][]byte // the first line seen per payment
-	created    map[string]int64
-	Records    int // lines read
-	Duplicates int // lines for a payment already seen
+	spill   *os.File
+	size    int64
+	index   map[string]lineRef
+	Records int // lines read
+	// Duplicates are lines for a payment already seen.
+	Duplicates int
 	// Conflicts are duplicates whose decision differs from the first one's,
 	// ignoring when it was written (at_ms, latency_us). A crash may re-send a
 	// decision; it must be the same decision.
@@ -150,11 +154,51 @@ type DecisionSet struct {
 	Example   string
 }
 
-// ReadDecisions reads and deduplicates the decisions topic.
-func ReadDecisions(ctx context.Context, brokers []string, topic string) (*DecisionSet, error) {
-	ds := &DecisionSet{Lines: map[string][]byte{}, created: map[string]int64{}}
-	err := ReadTopic(ctx, brokers, topic, func(r *kgo.Record) error { return ds.Add(r.Value) })
+type lineRef struct {
+	off     int64
+	n       int32
+	created int64
+}
+
+// NewDecisionSet keeps its spill file in dir ("" for the system's).
+func NewDecisionSet(dir string) (*DecisionSet, error) {
+	f, err := os.CreateTemp(dir, ".decisions-*.spill")
+	if err != nil {
+		return nil, err
+	}
+	return &DecisionSet{spill: f, index: map[string]lineRef{}}, nil
+}
+
+// ReadDecisions reads and deduplicates the decisions topic. Close the set
+// when done with it.
+func ReadDecisions(ctx context.Context, brokers []string, topic, spillDir string) (*DecisionSet, error) {
+	ds, err := NewDecisionSet(spillDir)
+	if err != nil {
+		return nil, err
+	}
+	err = ReadTopic(ctx, brokers, topic, func(r *kgo.Record) error { return ds.Add(r.Value) })
 	return ds, err
+}
+
+// Close removes the spill file.
+func (ds *DecisionSet) Close() error {
+	name := ds.spill.Name()
+	err := ds.spill.Close()
+	return errors.Join(err, os.Remove(name))
+}
+
+// Len is the number of payments with a decision.
+func (ds *DecisionSet) Len() int { return len(ds.index) }
+
+// Line returns the kept line for a payment.
+func (ds *DecisionSet) Line(paymentID string) ([]byte, bool, error) {
+	ref, ok := ds.index[paymentID]
+	if !ok {
+		return nil, false, nil
+	}
+	b := make([]byte, ref.n)
+	_, err := ds.spill.ReadAt(b, ref.off)
+	return b, true, err
 }
 
 // Add records one decision line.
@@ -167,13 +211,20 @@ func (ds *DecisionSet) Add(line []byte) error {
 	if err := json.Unmarshal(line, &head); err != nil {
 		return fmt.Errorf("stream: decision line: %w", err)
 	}
-	first, seen := ds.Lines[head.PaymentID]
-	if !seen {
-		ds.Lines[head.PaymentID] = bytes.Clone(line)
-		ds.created[head.PaymentID] = head.Created
+	if _, seen := ds.index[head.PaymentID]; !seen {
+		n, err := ds.spill.WriteAt(line, ds.size)
+		if err != nil {
+			return err
+		}
+		ds.index[head.PaymentID] = lineRef{off: ds.size, n: int32(n), created: head.Created}
+		ds.size += int64(n)
 		return nil
 	}
 	ds.Duplicates++
+	first, _, err := ds.Line(head.PaymentID)
+	if err != nil {
+		return err
+	}
 	a, err := decisionContent(first)
 	if err != nil {
 		return err
@@ -207,8 +258,8 @@ func decisionContent(line []byte) (string, error) {
 // TransactionID), the order the offline replay and the decision-log
 // comparison (cmd/serveparity compare) expect.
 func (ds *DecisionSet) WriteSorted(w io.Writer) error {
-	ids := make([]string, 0, len(ds.Lines))
-	for id := range ds.Lines {
+	ids := make([]string, 0, len(ds.index))
+	for id := range ds.index {
 		ids = append(ids, id)
 	}
 	txnID := func(id string) int64 {
@@ -219,11 +270,14 @@ func (ds *DecisionSet) WriteSorted(w io.Writer) error {
 		return n
 	}
 	slices.SortFunc(ids, func(a, b string) int {
-		return cmp.Or(cmp.Compare(ds.created[a], ds.created[b]), cmp.Compare(txnID(a), txnID(b)), cmp.Compare(a, b))
+		return cmp.Or(cmp.Compare(ds.index[a].created, ds.index[b].created), cmp.Compare(txnID(a), txnID(b)), cmp.Compare(a, b))
 	})
 	bw := bufio.NewWriterSize(w, 1<<20)
 	for _, id := range ids {
-		line := ds.Lines[id]
+		line, _, err := ds.Line(id)
+		if err != nil {
+			return err
+		}
 		if _, err := bw.Write(line); err != nil {
 			return err
 		}

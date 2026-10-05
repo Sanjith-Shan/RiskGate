@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -308,10 +309,15 @@ func streamDecisions(args []string) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	ds, err := stream.ReadDecisions(ctx, k.list(), k.topics().Decisions)
+	spill := "."
+	if *out != "" {
+		spill = filepath.Dir(*out)
+	}
+	ds, err := stream.ReadDecisions(ctx, k.list(), k.topics().Decisions, spill)
 	if err != nil {
 		return err
 	}
+	defer ds.Close()
 	if *out != "" {
 		f, err := os.Create(*out)
 		if err != nil {
@@ -326,7 +332,7 @@ func streamDecisions(args []string) error {
 		}
 	}
 	b, _ := json.Marshal(map[string]any{
-		"records": ds.Records, "payments": len(ds.Lines), "duplicates": ds.Duplicates, "conflicting_duplicates": ds.Conflicts,
+		"records": ds.Records, "payments": ds.Len(), "duplicates": ds.Duplicates, "conflicting_duplicates": ds.Conflicts,
 	})
 	fmt.Println(string(b))
 	if ds.Conflicts > 0 {

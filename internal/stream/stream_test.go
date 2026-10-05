@@ -159,16 +159,19 @@ func (p *pipeline) waitDecisions(n int) *DecisionSet {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	for {
-		ds, err := ReadDecisions(ctx, p.brokers, p.topics.Decisions)
+		ds, err := ReadDecisions(ctx, p.brokers, p.topics.Decisions, p.t.TempDir())
 		if err != nil {
 			p.t.Fatal(err)
 		}
-		if len(ds.Lines) >= n {
+		if ds.Len() >= n {
+			p.t.Cleanup(func() { ds.Close() })
 			return ds
 		}
+		n0 := ds.Len()
+		ds.Close()
 		select {
 		case <-ctx.Done():
-			p.t.Fatalf("only %d of %d payments decided; metrics %+v", len(ds.Lines), n, p.metrics.Snapshot())
+			p.t.Fatalf("only %d of %d payments decided; metrics %+v", n0, n, p.metrics.Snapshot())
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -189,7 +192,10 @@ func (p *pipeline) check(ds *DecisionSet) (mismatched int) {
 	riskSlot := p.cat.MustLookup(schema.RiskScoreField.Name).Slot
 	err = features.Replay(engine, p.txns, func(tx *data.Txn, off schema.Row) error {
 		id := data.PaymentIDPrefix + strconv.FormatInt(tx.ID, 10)
-		line, ok := ds.Lines[id]
+		line, ok, err := ds.Line(id)
+		if err != nil {
+			p.t.Fatal(err)
+		}
 		if !ok {
 			p.t.Fatalf("no decision for %s", id)
 		}
@@ -217,8 +223,8 @@ func (p *pipeline) check(ds *DecisionSet) (mismatched int) {
 	if err != nil {
 		p.t.Fatal(err)
 	}
-	if len(ds.Lines) != len(p.txns) {
-		p.t.Fatalf("%d decisions for %d payments", len(ds.Lines), len(p.txns))
+	if ds.Len() != len(p.txns) {
+		p.t.Fatalf("%d decisions for %d payments", ds.Len(), len(p.txns))
 	}
 	return mismatched
 }
