@@ -97,6 +97,8 @@ What exists today, package by package.
 | `internal/webhook` | Clearinghouse signature verifier, dedupe, event envelope, HTTP handler | built |
 | `internal/loadgen`, `cmd/loadgen` | Open-loop load generator with coordinated-omission correction | built |
 | `internal/service`, `cmd/riskgate` | `/v1/assess`, idempotency, rule swap, shadow rules, decision log and `riskgate audit`, snapshots, metrics, the page, and `riskgate table` | built |
+| `internal/stream`, `riskgate stream` | The Kafka pipeline: route, aggregate with watermarks, join and score, labels; snapshot checkpoints, handover on rebalance, backtests from the topics | built |
+| `cmd/streamexp` | Stream experiments k1 to k4 against a real broker, and the offline controls | built |
 
 ## One feature implementation, and point-in-time correctness
 
@@ -710,6 +712,10 @@ Real bugs found by tests, fuzzing and parity checks, each with a regression test
 
 **3D Secure, the fourth action.** Radar evaluates request-3DS rules before allow rules. A 3DS rule asks the cardholder's bank to authenticate the payment, which moves fraud liability and adds friction. RiskGate leaves it out because real 3DS needs a card network and an issuer, and a simulated challenge would be a guess about how often customers abandon a payment, not a result. The rule language already reserves the place. It would be one more action evaluated first, with one more outcome for the backtester to report.
 
+**Rule changes through the stream, in event time.** The stream's joiners load one rule set at start. A live deployment changes rules while payments flow, across every joiner process, and a decision re-made after a crash has to come out the same as the first time. Swapping on arrival of a "new rules" message cannot promise that, because which payments a joiner has decided when the message arrives depends on timing. The fix is the same as for features: put the rule change in event time. A rules topic carries each version with the event time it takes effect from, plus the deployer's own watermark ("no version will take effect before this"), and a joiner decides a payment only when the rules watermark has passed it, with the version in force at the payment's time. Every joiner and every replay then picks the same version for the same payment, and `riskgate audit` already checks decisions per version.
+
+**Serving the stream's state to the synchronous path.** The service and the stream share the feature code, not the state. Reading the aggregators' state from `/v1/assess` (what Kafka Streams calls interactive queries) would make the synchronous check see every payment the platform made, not only the ones it was asked about, at the cost of a network hop to the owning aggregator and features as fresh as the consumer lag.
+
 **Other things, in order.**
 - Label arrival times from Clearinghouse's webhooks instead of a simulation, which experiment 8 starts to provide.
 - Drift monitoring on `risk_score`'s calibration, since a threshold means what it means only while the calibration holds.
@@ -726,6 +732,10 @@ Each entry says what RiskGate took from it. Quotes are short and exact.
 - **IEEE-CIS Fraud Detection** (Kaggle, 2019, sponsored by the IEEE Computational Intelligence Society, data from Vesta Corporation). The dataset, and its rules. https://www.kaggle.com/competitions/ieee-fraud-detection and https://www.kaggle.com/competitions/ieee-fraud-detection/rules
 - **NVIDIA Technical Blog, "Leveraging Machine Learning to Detect Fraud"** (by members of the winning team). The dataset's class balance, "only 3.5% of the transactions are labeled fraudulent". https://developer.nvidia.com/blog/leveraging-machine-learning-to-detect-fraud-tips-to-developing-a-winning-kaggle-solution/
 - **Chris Deotte and Konstantin Yakovlev (team FraudSquad), first-place solution, parts 1 and 2.** The `uid` reconstruction from `card1`, `addr1` and `D1`, which RiskGate uses as one entity key. Part 1 names "the three columns card1, addr1, and D1". The winning private-leaderboard AUC, 0.945884, is read from the competition leaderboard and quoted only as context. https://www.kaggle.com/competitions/ieee-fraud-detection/discussion/111284 and https://www.kaggle.com/competitions/ieee-fraud-detection/discussion/111308
+- **Tyler Akidau et al., "The Dataflow Model"** (VLDB 2015). Event time against processing time, and watermarks as a source's promise about how far event time has progressed, which is what the router's watermarks are. https://doi.org/10.14778/2824032.2824076
+- **Apache Flink documentation, "Timely Stream Processing"**. Per-input-channel watermarks with the minimum taken across channels, and idle sources holding watermarks back, the problem the producer's heartbeats solve. https://nightlies.apache.org/flink/flink-docs-stable/docs/concepts/time/
+- **Apache Kafka documentation**, consumer groups, the cooperative-sticky assignor and static membership (KIP-345), and Kafka Streams' repartition topics and changelog-backed state, which the pipeline's design follows and departs from (snapshots instead of a changelog). https://kafka.apache.org/documentation/
+- **franz-go** (Travis Bischel), the Kafka client, and its `kfake` in-process cluster, which runs the stream tests without a broker. https://github.com/twmb/franz-go
 - **Martin Kleppmann, *Designing Data-Intensive Applications*** (O'Reilly, first edition, 2017), chapter 11, "Stream Processing". Event time against processing time, and window types. The second edition (2026) renumbers the chapters, so the citation is to the first. https://www.oreilly.com/library/view/designing-data-intensive-applications/9781491903063/ch11.html
 - **Ando Saabas, "Interpreting random forests"** (2014), and the `treeinterpreter` package. The contribution method behind RiskGate's reasons, "a sum of feature contributions". http://blog.datadive.net/interpreting-random-forests/
 - **Scott Lundberg, Gabriel Erion and Su-In Lee, "Consistent Individualized Feature Attribution for Tree Ensembles"** (2018). TreeSHAP, and the argument that "the gain, split count, and Saabas methods are all inconsistent". https://arxiv.org/abs/1802.03888
