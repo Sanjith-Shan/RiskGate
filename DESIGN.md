@@ -20,11 +20,12 @@ Numbers written as `TBD (experiment N)` have not been measured yet. Nothing in t
 8. [Two evaluators and the differential test](#two-evaluators-and-the-differential-test)
 9. [The backtester](#the-backtester)
 10. [The online service](#the-online-service)
-11. [Integration with Clearinghouse](#integration-with-clearinghouse)
-12. [Experiments](#experiments)
-13. [Bug log](#bug-log)
-14. [What I would do next](#what-i-would-do-next)
-15. [Reading list and credits](#reading-list-and-credits)
+11. [The stream pipeline](#the-stream-pipeline)
+12. [Integration with Clearinghouse](#integration-with-clearinghouse)
+13. [Experiments](#experiments)
+14. [Bug log](#bug-log)
+15. [What I would do next](#what-i-would-do-next)
+16. [Reading list and credits](#reading-list-and-credits)
 
 ## What the data can and cannot say
 
@@ -375,6 +376,60 @@ Velocity state and the webhook deduper are snapshotted to disk and restored on s
 ### Metrics
 
 Latency histograms per endpoint (HdrHistogram), decisions by action and rule, rule-set version, state size, webhook verification failures by error code, and dedupe hits.
+
+## The stream pipeline
+
+The online service computes velocity features from the payments it is asked about. A production fraud system takes its signals off an event stream as well: every payment the platform makes, whichever path it came through, and every dispute weeks later. `internal/stream` is that path. Payments arrive on a Kafka topic, velocity state is updated from them, every payment gets a decision with the rule and score that produced it, and the decisions go out on a topic that a backtest can be replayed from. It runs the same features, model and rules as the service, and experiment k1 checks that it computes the same answer, bit for bit.
+
+### Why it is three stages
+
+The obvious design is one consumer group on a payments topic partitioned by card, each partition keeping velocity state for its own payments. It gets two of the four entities right. Card and `uid` (which contains card1) are co-partitioned with the payment. Device and email domain are not. A device or a domain is shared by payments on many cards, so each partition would count only its own share of their traffic, and `distinct_cards_per_email_24h` would mean "distinct cards per email domain on this partition". Nothing would crash. The model would just see features it was never trained on. The offline control in experiment k1 measures how many payments that design gets wrong.
+
+So the pipeline partitions state by **entity key**, the way Kafka Streams repartitions before an aggregation, and joins the pieces back together:
+
+```
+ payments (by card)        entity-events (by entity key)         parts (by payment id)        decisions (by payment id)
+ ------------------> route -----------------------------> aggregate -----------------> join -------------------->
+   assess JSON,            one event per present key,         one entity's features       decision-log JSON line:
+   heartbeats              plus watermarks                    per payment                 features, score, rule
+                     \______________ the payment itself (base part) ______________/
+```
+
+- **route** (stateless) parses each payment with the service's own parser (`service.DecodePayment`), sends one event per present entity key to the aggregator partition that owns that key, and sends the payment itself to the joiner partition that owns its id.
+- **aggregate** owns the velocity state of the keys that hash to its partition. For each event it calls `Engine.ScoreAndUpdateEntity`, which is `ScoreAndUpdate` taken apart along the seams it already had (read and update one key under one lock, then fill that entity's slots), and sends that entity's features to the joiner. **One feature implementation** stays shared: the service, the export, the backtester and the stream all run `fillEntity`, and `TestPartitionedEqualsReplay` checks that splitting the state by key and joining the pieces gives `Replay`'s rows exactly.
+- **join** waits for the payment and each of its entities' features, assembles the row with `FillRaw` and `FillMissing`, scores it with the same `Scorer` call the service makes, applies the rule set, and writes the service's decision-log line (`service.DecisionEncoder`). `riskgate audit` and experiment 2's comparison read the decisions topic unchanged.
+
+Disputes take a fourth, simpler stage: **labels** consumes dispute events and records them in the service's `LabelStore`, which appends and fsyncs before acknowledging and upserts by dispute id.
+
+### Event time across partitions: watermarks
+
+Partitioning by key breaks the one thing the features depend on most, order. An aggregator partition receives events from every payments partition, and they interleave in whatever order the network delivers them. A device shared by payments in two payments partitions would see its events in arrival order. A velocity feature computed in arrival order is not the feature training saw, and the engine's rule for a late event (recorded at the key's latest time) keeps it safe, not identical.
+
+The fix is the Dataflow model's (Akidau et al.) and Flink's: per-channel watermarks, minimum across channels. Each router task, after its batch is acknowledged, sends every aggregator partition a watermark, "payments partition *p* will send nothing at or before position (DT, TransactionID)". The aggregator buffers events in a heap and releases them in (DT, TransactionID, entity) order only once the minimum watermark over all payments partitions has passed them. A quiet payments partition would hold every aggregator back, so the producer sends heartbeats, which the router turns into watermarks, the same idleness problem Flink solves the same way. The cost is latency: an event waits for the slowest partition's watermark.
+
+The contract this rests on is that each payments partition is in event-time order, which a producer writing from an ordered log (an outbox, or this replay) can promise. The router counts any payment that breaks it, and the aggregator counts any event that arrives after the watermark passed it. Both counts are 0 in every run reported here. The negative control, `-arrival-order`, applies events as they arrive with no watermarks. `TestStreamArrivalOrderBreaksParity` requires it to produce mismatches, so the parity test can fail when the merger is missing, and on the real data it is reported in experiment k1.
+
+### Exactly-once effect
+
+Kafka delivers at least once, and a process can die anywhere. The pipeline gets exactly-once *effect* (no event lost, none applied twice to velocity state) from three pieces rather than from Kafka transactions.
+
+1. **Checkpoint order.** A stateful task (aggregate, join) checkpoints by flushing its producer so every output of the input it consumed is acknowledged, then writing a snapshot of its state together with the offset of its next input record (temporary file, fsync, rename), then committing that offset to the group. A crash anywhere restarts from the last snapshot, and the snapshot's offset, not the group's, is where the task resumes, so committed offsets only ever trail the state. Stateless stages (route, labels) commit after their output is acknowledged.
+2. **Deterministic replay.** A restored task re-reads the same input from the same offset with the same state, so it produces the same output sequence again. That makes every resend identical to the original, which is what lets the next stage drop it.
+3. **Dedupe by sequence, in constant memory.** Each stage's output to a given downstream partition is in a fixed order, so the downstream stage keeps one high-water mark per upstream: the highest (payments offset, entity) per payments partition at an aggregator, and the highest payments offset per router and the highest output sequence number per aggregator partition at a joiner. Anything at or below it is a resend. This is the same idea as Kafka's idempotent producer, applied between stages.
+
+Decisions re-sent after a joiner crash are identical lines (the assessment id is derived from the payment id) and the decisions topic is keyed by payment id, so a reader keeps the first per key. `riskgate stream decisions` counts the resends and checks each is identical to the first, ignoring only the wall-clock fields.
+
+The snapshot counters make the claim checkable. Each aggregator snapshot carries how many events it has applied per entity, and each joiner snapshot how many payments it has decided. They roll back with the state on a crash, so at the end of a run their totals equal the number of entity events and payments in the data exactly when nothing was lost or applied twice. Experiment k2 reports that difference after forced crashes.
+
+### Rebalance and state handover
+
+Each stage is a consumer group (cooperative-sticky assignment, franz-go). On revocation a stateful task checkpoints before it lets go. On assignment the new owner restores that partition's snapshot from the shared store and starts fetching at the snapshot's offset (`AdjustFetchOffsetsFn`). A member that dies hands its partitions over after the session timeout, and the new owner resumes from the last periodic snapshot, re-sending what the dead member had already sent, which the next stage drops. With static membership (`-instance-id`), a member that restarts within the session timeout gets its partitions back without a rebalance at all, which is what makes restarts in experiment k2 cheap.
+
+The snapshot store is a directory every process can reach. On one machine that is a local directory. In production it would be an object store, or a compacted changelog topic as Kafka Streams uses. The stateful topics keep their records forever (`retention.ms=-1`), because a partition rebuilt from scratch needs its whole input, and a task that finds a gap in its input offsets stops rather than rebuild state over it.
+
+### Hot keys
+
+An email domain is one key, so all of `gmail.com`'s traffic lands on one aggregator partition whatever the partition count. `streamexp skew` measures it on the data. An aggregator's work per event is one state update (349 ns in experiment 4, on a loaded machine), against a model evaluation per payment in the joiner, which is partitioned by payment id and so spreads evenly. The skew is therefore real and cheap. A system where the per-key work was heavy would split a hot key's count across sub-keys and merge them, which works for counts and sums but not for the distinct-card count without a mergeable sketch.
 
 ## Integration with Clearinghouse
 
