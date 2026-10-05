@@ -1,6 +1,6 @@
 # RiskGate: Real-Time Fraud Rules Engine
 
-RiskGate is a fraud rules engine in Go that sits in a payment's critical path and answers allow, block, or review. Analysts write rules in a small typed language with error messages meant for people who are not programmers, and a backtester replays 590K real e-commerce transactions to show what a rule would have caught and what it would have cost before it goes live. A gradient-boosted model, evaluated natively in Go, feeds the rules a calibrated `risk_score`. It does not make the decision.
+RiskGate is a fraud rules engine in Go that sits in a payment's critical path and answers allow, block, or review. Analysts write rules in a small typed language with error messages meant for people who are not programmers, and a backtester replays 590K real e-commerce transactions to show what a rule would have caught and what it would have cost before it goes live. A gradient-boosted model, evaluated natively in Go, feeds the rules a calibrated `risk_score`. It does not make the decision. The same features, model and rules also run as a Kafka pipeline, with velocity state partitioned by entity key, event-time watermarks, and exactly-once effect across crashes and rebalances.
 
 The design is in [DESIGN.md](DESIGN.md). It starts with what the data can and cannot say.
 
