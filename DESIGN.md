@@ -686,6 +686,22 @@ The backtest from the topic can also be labelled from the disputes topic instead
 
 Restarted processes had all their stages processing again a median 0.45 s after starting (90th percentile 3.1 s, slowest 8.7 s), and a partition's snapshot restored in a median 4 ms. Those are timings on a machine running at 92% CPU on average during the run, and are not quotable. The recovery work shows up in the resend counts: each restart redoes up to a checkpoint interval of work, and everything it redoes is dropped downstream rather than counted.
 
+#### k3. Lag and latency
+
+**Question.** How fast can the pipeline go on this machine before it falls behind, and how long does a payment wait for its decision?
+**Method.** For each rate, a fresh pipeline (new topics, empty state, two processes each running every stage) and an open-loop producer that stamps each payment with its scheduled send time and sends the first rate x 60 s payments on schedule, heartbeating every 250 ms. A decision's latency runs from that scheduled time to the moment the joiner wrote it, so a pipeline falling behind shows as latency, not as a slower producer. Lag is the payments the schedule has sent minus the decisions written, sampled every second. Each rate ran in a window when the other project's benchmarks were paused by the shared lock, with its containers still up.
+**Result.** `results/stream/k3.jsonl`. **Not quotable**: the background CPU before the runs was 13% to 40%, and this is a 4-thread laptop chip running the broker, the pipeline and the producer together.
+
+| Payments per second | Decisions per second | p50 | p99 | Largest lag | Backlog left when production ended |
+|---|---|---|---|---|---|
+| 500 to 4,000 | kept pace | 30 to 54 ms | 87 to 336 ms | at most about 1 s of traffic | none |
+| 5,000 | 4,976 | 56 ms | 358 ms | 2,994 payments | none |
+| 6,000 | 4,273 | 78 ms | 29.2 s | 82,547 | 23.9 s to drain |
+| 8,000 | 4,660 | 165 ms | 44.2 s | 152,359 | 42.7 s |
+| 10,000 | 4,833 | 36.5 s | 62.9 s | 338,341 | 62.9 s |
+
+So the ceiling here is between 5,000 and 6,000 payments per second, and above it the backlog grows without bound, as it should with an open-loop source. Most of the pipeline's CPU goes to the joiners' model evaluation (k1's busy-time split), which is the part to scale out. For scale, experiment 5 measured the whole in-process pipeline (features, the 954-tree model, Saabas contributions, rules) at 189 µs a payment on the M3 Pro under load, about 5,300 per core-second before Kafka, JSON and three hops.
+
 #### k4. Rebalance
 
 **Question.** When partitions move between members mid-replay, does their state move with them, exactly?
