@@ -43,23 +43,36 @@ func (a seqMark) after(b seqMark) bool {
 	return a.Offset > b.Offset || (a.Offset == b.Offset && a.Entity > b.Entity)
 }
 
-// releaseKey is the order events leave the merger in.
+// releaseKey is the order events leave the merger in: event time, then
+// entity, then the payments record it came from. (DT, TransactionID) is
+// unique for real payments, so the last two only make the order total, and
+// so independent of heap shape, if the input ever breaks that.
 type releaseKey struct {
 	Pos    Pos
 	Entity uint8
+	Src    int32
+	Offset int64
 }
 
 func (a releaseKey) less(b releaseKey) bool {
 	if a.Pos != b.Pos {
 		return a.Pos.Less(b.Pos)
 	}
-	return a.Entity < b.Entity
+	if a.Entity != b.Entity {
+		return a.Entity < b.Entity
+	}
+	if a.Src != b.Src {
+		return a.Src < b.Src
+	}
+	return a.Offset < b.Offset
 }
 
-func keyOf(ev *EntityEvent) releaseKey { return releaseKey{PosOf(&ev.Txn), ev.Entity} }
+func keyOf(ev *EntityEvent) releaseKey {
+	return releaseKey{PosOf(&ev.Txn), ev.Entity, ev.Src, ev.Offset}
+}
 
 func newMerger(sources int) *merger {
-	m := &merger{wm: make([]Pos, sources), recv: make([]seqMark, sources), last: releaseKey{Pos: MinPos}}
+	m := &merger{wm: make([]Pos, sources), recv: make([]seqMark, sources), last: releaseKey{Pos: MinPos, Src: -1, Offset: -1}}
 	for i := range m.wm {
 		m.wm[i] = MinPos
 		m.recv[i] = seqMark{Offset: -1}
@@ -162,6 +175,8 @@ func (m *merger) encode(e *enc) {
 	}
 	e.pos(m.last.Pos)
 	e.byte(m.last.Entity)
+	e.varint(int64(m.last.Src))
+	e.varint(m.last.Offset)
 	e.uvarint(m.late)
 	e.uvarint(m.dups)
 	// Buffered events in release order, so equal mergers encode equally.
@@ -170,7 +185,7 @@ func (m *merger) encode(e *enc) {
 		if keyOf(a).less(keyOf(b)) {
 			return -1
 		}
-		return 1 // release keys are unique: a payment has one event per entity
+		return 1 // release keys are unique
 	})
 	e.uvarint(uint64(len(evs)))
 	for _, ev := range evs {
@@ -188,7 +203,8 @@ func decodeMerger(d *dec, sources int) (*merger, error) {
 		m.wm[i] = d.pos()
 		m.recv[i] = seqMark{d.varint(), d.byte()}
 	}
-	m.last = releaseKey{d.pos(), d.byte()}
+	m.last = releaseKey{Pos: d.pos(), Entity: d.byte()}
+	m.last.Src, m.last.Offset = int32(d.varint()), d.varint()
 	m.late = d.uvarint()
 	m.dups = d.uvarint()
 	k := d.uvarint()

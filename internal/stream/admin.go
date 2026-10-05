@@ -35,15 +35,20 @@ var DefaultLayout = Layout{Payments: 8, EntityEvents: 8, Parts: 8, Decisions: 8,
 // anyone reading the topic by key. Topics that exist are left alone.
 func CreateTopics(ctx context.Context, cl *kgo.Client, t Topics, l Layout) error {
 	adm := kadm.NewClient(cl)
-	compact := "compact"
+	compact, forever := "compact", "-1"
+	// The internal topics are the state's log: a stateful partition rebuilt
+	// from the start needs all of it, so retention never trims them. A real
+	// deployment would bound them by deleting below the oldest snapshot's
+	// offset.
+	keep := map[string]*string{"retention.ms": &forever}
 	for _, x := range []struct {
 		name  string
 		parts int32
 		conf  map[string]*string
 	}{
 		{t.Payments, l.Payments, nil},
-		{t.EntityEvents, l.EntityEvents, nil},
-		{t.Parts, l.Parts, nil},
+		{t.EntityEvents, l.EntityEvents, keep},
+		{t.Parts, l.Parts, keep},
 		{t.Decisions, l.Decisions, map[string]*string{"cleanup.policy": &compact}},
 		{t.Disputes, max(l.Disputes, 1), nil},
 		{t.DeadLetters, 1, nil},

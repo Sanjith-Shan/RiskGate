@@ -19,6 +19,7 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kgo"
 
+	"github.com/Sanjith-Shan/RiskGate/internal/backtest"
 	"github.com/Sanjith-Shan/RiskGate/internal/data"
 	"github.com/Sanjith-Shan/RiskGate/internal/model"
 	"github.com/Sanjith-Shan/RiskGate/internal/schema"
@@ -32,9 +33,10 @@ import (
 //	riskgate stream run       run one or more stages: route, aggregate, join, labels
 //	riskgate stream produce   replay the dataset into the payments topic, in event-time order
 //	riskgate stream decisions read the decisions topic back, deduplicated, in event-time order
+//	riskgate stream backtest  backtest a rule over the decisions read back, labelled by the disputes topic
 func streamCmd(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: riskgate stream topics|run|produce|decisions [flags]")
+		return errors.New("usage: riskgate stream topics|run|produce|decisions|backtest [flags]")
 	}
 	switch args[0] {
 	case "topics":
@@ -45,8 +47,10 @@ func streamCmd(args []string) error {
 		return streamProduce(args[1:])
 	case "decisions":
 		return streamDecisions(args[1:])
+	case "backtest":
+		return streamBacktest(args[1:])
 	}
-	return fmt.Errorf("riskgate stream: unknown command %q (want topics, run, produce or decisions)", args[0])
+	return fmt.Errorf("riskgate stream: unknown command %q (want topics, run, produce, decisions or backtest)", args[0])
 }
 
 type kafkaFlags struct {
@@ -175,23 +179,33 @@ func streamRun(args []string) error {
 		}
 	}
 
+	var wg sync.WaitGroup
+	errs := make([]error, len(names))
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// GET /metrics: stage metrics as JSON. POST /quit: stop cleanly, which
+	// is how the experiment driver asks for a graceful stop on Windows,
+	// where a process cannot be sent SIGTERM.
 	if *metricsAddr != "" {
 		ln, err := net.Listen("tcp", *metricsAddr)
 		if err != nil {
 			return err
 		}
-		srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(metrics.Snapshot())
-		}), ReadHeaderTimeout: 2 * time.Second}
+		})
+		mux.HandleFunc("POST /quit", func(w http.ResponseWriter, _ *http.Request) {
+			cancel()
+			w.WriteHeader(http.StatusAccepted)
+		})
+		srv := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second}
 		go func() { _ = srv.Serve(ln) }()
 		defer srv.Close()
 	}
 
-	var wg sync.WaitGroup
-	errs := make([]error, len(names))
-	runCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	for i, s := range names {
 		cfg := base
 		cfg.Stage = strings.TrimSpace(s)
@@ -318,5 +332,68 @@ func streamDecisions(args []string) error {
 	if ds.Conflicts > 0 {
 		return fmt.Errorf("%d re-sent decisions differ from the first (e.g. %s)", ds.Conflicts, ds.Example)
 	}
+	return nil
+}
+
+func streamBacktest(args []string) error {
+	fs := flag.NewFlagSet("stream backtest", flag.ExitOnError)
+	var k kafkaFlags
+	k.register(fs)
+	logPath := fs.String("log", "", "decision log from `riskgate stream decisions -out` (required)")
+	ruleText := fs.String("rule", "", "the proposed rule (required)")
+	rulesPath := fs.String("rules", "rules/default.rules", "the rule set in force")
+	listsPath := fs.String("lists", "rules/lists.json", "named lists")
+	asOf := fs.Bool("as-of-end", true, "count only the disputes that had arrived by the last payment (UseLabelTime)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *logPath == "" || *ruleText == "" {
+		return errors.New("stream backtest: -log and -rule are required")
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	cat := schema.Default()
+	lists, err := os.ReadFile(*listsPath)
+	if err != nil {
+		return err
+	}
+	cur, err := os.ReadFile(*rulesPath)
+	if err != nil {
+		return err
+	}
+	current, err := service.CompileRules(cat, string(cur), lists, 1, "")
+	if err != nil {
+		return err
+	}
+	proposed, err := service.CompileRules(cat, *ruleText, lists, 1, "")
+	if err != nil {
+		return err
+	}
+	if len(proposed.Rules) != 1 {
+		return fmt.Errorf("stream backtest: -rule holds %d rules, want 1", len(proposed.Rules))
+	}
+	disputes, err := stream.ReadDisputes(ctx, k.list(), k.topics().Disputes)
+	if err != nil {
+		return err
+	}
+	f, err := os.Open(*logPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	t, err := stream.TableFromLog(f, cat, stream.DisputeLabels(disputes))
+	if err != nil {
+		return err
+	}
+	opt := backtest.Options{}
+	if *asOf {
+		_, hi := t.TimeSpan()
+		opt.AsOf, opt.UseLabelTime = hi, true
+	}
+	rep, err := backtest.Backtest(t, current, proposed.Rules[0], opt)
+	if err != nil {
+		return err
+	}
+	fmt.Println(rep.SummaryText)
 	return nil
 }

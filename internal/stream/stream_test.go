@@ -3,11 +3,14 @@ package stream
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"math"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -48,21 +51,34 @@ type pipeline struct {
 	scorer  *model.Scorer
 	rules   *rules.RuleSet
 	metrics *Metrics
+	session time.Duration
 }
 
 func newPipeline(t *testing.T, rows int) *pipeline {
 	t.Helper()
-	c, err := kfake.NewCluster(kfake.NumBrokers(1), kfake.GroupMinSessionTimeout(100*time.Millisecond))
-	if err != nil {
-		t.Fatal(err)
+	// Against franz-go's in-process fake cluster by default; against a real
+	// broker when RISKGATE_KAFKA_BROKERS names one (the CI kafka job).
+	var brokers []string
+	session := 2 * time.Second
+	if env := os.Getenv("RISKGATE_KAFKA_BROKERS"); env != "" {
+		brokers = strings.Split(env, ",")
+		session = 6 * time.Second // a broker's default group.min.session.timeout.ms
+	} else {
+		c, err := kfake.NewCluster(kfake.NumBrokers(1), kfake.GroupMinSessionTimeout(100*time.Millisecond))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(c.Close)
+		brokers = c.ListenAddrs()
 	}
-	t.Cleanup(c.Close)
-	p := &pipeline{t: t, brokers: c.ListenAddrs(), topics: TopicsWithPrefix("rgtest"), store: DirStore{Dir: t.TempDir()}, cat: schema.Default(), metrics: &Metrics{}}
+	prefix := fmt.Sprintf("rgtest-%s-%d", t.Name(), time.Now().UnixNano())
+	p := &pipeline{t: t, brokers: brokers, topics: TopicsWithPrefix(prefix), store: DirStore{Dir: t.TempDir()}, cat: schema.Default(), metrics: &Metrics{}, session: session}
+	var err error
 	cl := p.client()
 	if err := CreateTopics(context.Background(), cl, p.topics, testLayout); err != nil {
 		t.Fatal(err)
 	}
-	cl.Close()
+	cl.Close() // topics are left behind: every test uses its own prefix, and Kafka on Windows cannot delete topics
 	if p.scorer, err = model.LoadScorer(filepath.Join("..", "service", "testdata", "model"), p.cat); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +124,7 @@ func (p *pipeline) start(name, instance string, arrival bool) *stage {
 	p.t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	r, err := NewRunner(ctx, Config{
-		Brokers: p.brokers, Topics: p.topics, Stage: name, InstanceID: instance, SessionTimeout: 2 * time.Second,
+		Brokers: p.brokers, Topics: p.topics, Stage: name, InstanceID: instance, SessionTimeout: p.session,
 		Store: p.store, CheckpointEvery: 30 * time.Millisecond, MaxPollRecords: 64, Decider: p.decider,
 		ArrivalOrder: arrival, Metrics: p.metrics, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})

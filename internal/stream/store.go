@@ -8,6 +8,7 @@ import (
 	"hash/crc32"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 )
 
@@ -74,6 +75,9 @@ func (s DirStore) Put(group string, partition int32, offset int64, state []byte)
 	}
 	if err = os.Rename(f.Name(), path); err != nil {
 		return err
+	}
+	if runtime.GOOS == "windows" {
+		return nil // a directory handle cannot be fsynced on Windows; NTFS journals the rename
 	}
 	d, err := os.Open(dir)
 	if err != nil {

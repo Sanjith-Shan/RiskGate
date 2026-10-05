@@ -96,7 +96,11 @@ type Runner struct {
 	log      *slog.Logger
 	m        *Metrics
 
-	tasks   map[int32]*taskState // touched only from the poll loop and the group callbacks, which BlockRebalanceOnPoll serializes
+	// tasks is touched by the poll loop and the group callbacks, which
+	// BlockRebalanceOnPoll serializes, and by shutdown, which runs outside
+	// the poll gate; mu covers all three.
+	mu      sync.Mutex
+	tasks   map[int32]*taskState
 	prodErr atomic.Pointer[error]
 	started time.Time
 	first   sync.Once
@@ -215,6 +219,9 @@ func NewRunner(ctx context.Context, cfg Config) (*Runner, error) {
 		kgo.AdjustFetchOffsetsFn(r.adjust),
 		kgo.RecordPartitioner(kgo.ManualPartitioner()),
 		kgo.RequiredAcks(kgo.AllISRAcks()),
+		// A lost batch followed by acknowledged ones would leave a gap the
+		// high-water-mark dedupe downstream makes permanent: stop instead.
+		kgo.StopProducerOnDataLossDetected(),
 		kgo.ProducerLinger(2 * time.Millisecond),
 		kgo.MaxBufferedRecords(1 << 20),
 		kgo.FetchMaxWait(100 * time.Millisecond),
@@ -269,6 +276,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		// A polled batch is finished even if shutdown was asked for meanwhile:
 		// its output is flushed and committed, then shutdown checkpoints.
 		if err := r.batch(context.WithoutCancel(ctx), fs); err != nil {
+			// Tasks may have advanced past output that was never sent: a
+			// checkpoint now would save that state and lose the output. Exit
+			// as a crash does and let the restart resume from the last
+			// good snapshot.
+			r.crashed.Store(true)
 			r.cl.AllowRebalance()
 			return err
 		}
@@ -279,6 +291,8 @@ func (r *Runner) Run(ctx context.Context) error {
 // batch processes one poll's records, each partition on its own goroutine,
 // then writes the output, then commits or checkpoints.
 func (r *Runner) batch(ctx context.Context, fs kgo.Fetches) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	type work struct {
 		p    int32
 		ts   *taskState
@@ -310,6 +324,14 @@ func (r *Runner) batch(ctx context.Context, fs kgo.Fetches) error {
 			for _, rec := range w.recs {
 				if rec.Offset < w.ts.next {
 					continue // already processed: a refetch after a seek
+				}
+				if r.stateful && w.ts.next >= 0 && rec.Offset != w.ts.next {
+					// The input topics are neither compacted nor transactional,
+					// so offsets are contiguous: a gap is records deleted by
+					// retention or a topic recreated under old snapshots, and
+					// state rebuilt over it would be wrong.
+					w.err = fmt.Errorf("partition %d: expected offset %d, got %d (input deleted or topic recreated?)", w.p, w.ts.next, rec.Offset)
+					return
 				}
 				w.out, w.err = w.ts.t.handle(inOf(rec), w.out)
 				if w.err != nil {
@@ -535,6 +557,7 @@ func (r *Runner) shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	var err error
+	r.mu.Lock()
 	if r.stateful {
 		parts := make([]int32, 0, len(r.tasks))
 		for p := range r.tasks {
@@ -544,6 +567,7 @@ func (r *Runner) shutdown() error {
 	} else {
 		err = r.flush(ctx)
 	}
+	r.mu.Unlock() // leaving runs the revoke callback, which takes mu
 	if lerr := r.cl.LeaveGroupContext(ctx); lerr != nil && err == nil && r.cfg.InstanceID == "" {
 		err = lerr
 	}
@@ -554,6 +578,8 @@ func (r *Runner) shutdown() error {
 // during one.
 
 func (r *Runner) assigned(ctx context.Context, _ *kgo.Client, assigned map[string][]int32) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for _, p := range assigned[r.input] {
 		start := time.Now()
 		t, err := r.newTask(p)
@@ -564,16 +590,19 @@ func (r *Runner) assigned(ctx context.Context, _ *kgo.Client, assigned map[strin
 		ts := &taskState{t: t, next: -1}
 		if r.stateful {
 			off, b, ok, err := r.cfg.Store.Get(r.group, p)
-			if err != nil {
-				r.log.Error("cannot read snapshot; starting the partition from the beginning", "partition", p, "error", err)
-			} else if ok {
-				if err := t.restore(b); err != nil {
-					r.log.Error("cannot restore snapshot; starting the partition from the beginning", "partition", p, "error", err)
-					t, _ = r.newTask(p)
-					ts = &taskState{t: t, next: -1}
-				} else {
+			if err == nil && ok {
+				if err = t.restore(b); err == nil {
 					ts.next, ts.restored = off, true
 				}
+			}
+			if err != nil {
+				// Starting the partition over with empty state would be
+				// silently wrong once retention has trimmed its input, so
+				// an unreadable snapshot stops the process.
+				r.log.Error("cannot restore snapshot; stopping", "partition", p, "error", err)
+				r.crashed.Store(true)
+				go r.close()
+				return
 			}
 		}
 		r.tasks[p] = ts
@@ -593,6 +622,8 @@ func (r *Runner) assigned(ctx context.Context, _ *kgo.Client, assigned map[strin
 // stateful partition without a snapshot starts at the beginning whatever
 // the group committed, because its state starts empty.
 func (r *Runner) adjust(_ context.Context, offsets map[string]map[int32]kgo.Offset) (map[string]map[int32]kgo.Offset, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for p := range offsets[r.input] {
 		ts := r.tasks[p]
 		if ts == nil || !r.stateful {
@@ -608,6 +639,8 @@ func (r *Runner) adjust(_ context.Context, offsets map[string]map[int32]kgo.Offs
 }
 
 func (r *Runner) revoked(ctx context.Context, _ *kgo.Client, revoked map[string][]int32) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	parts := revoked[r.input]
 	if len(parts) == 0 || r.crashed.Load() {
 		return
@@ -638,6 +671,8 @@ func (r *Runner) revoked(ctx context.Context, _ *kgo.Client, revoked map[string]
 }
 
 func (r *Runner) lost(_ context.Context, _ *kgo.Client, lost map[string][]int32) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if r.crashed.Load() {
 		return
 	}

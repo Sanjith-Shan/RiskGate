@@ -128,6 +128,23 @@ go run ./cmd/parity -model models/mine -export data/export_real/export.csv -scor
 
 Row-level outputs (per-row scores, replay files, decision logs) go under `data/` or `var/`, never `results/`.
 
+## Streaming from Kafka
+
+`riskgate stream` runs the same features, model and rules as a Kafka pipeline: payments in, decisions out, velocity state partitioned by entity key and handed over on rebalance. [The design](DESIGN.md#the-stream-pipeline) explains why it is three stages and not one. Kafka 3.9 or later, one local broker is enough.
+
+```sh
+scripts/kafka_local.sh start                      # one KRaft broker on 127.0.0.1:19092, everything under build/
+go build -o build/bin/ ./cmd/...
+build/bin/riskgate stream topics                  # riskgate.payments, .entity-events, .parts, .decisions, .disputes
+build/bin/riskgate stream run -model models/synthetic -stages route,aggregate,join,labels -metrics-addr 127.0.0.1:19500 &
+build/bin/riskgate stream produce -synthetic -data data   # payments in event-time order, heartbeats, SIMULATED disputes
+build/bin/riskgate stream decisions -out build/decisions.jsonl   # read back, deduplicated, in event-time order
+build/bin/riskgate audit -log build/decisions.jsonl -rules-history var/stream/rules-history -model models/synthetic
+build/bin/riskgate stream backtest -log build/decisions.jsonl -rule 'block if :risk_score: >= 70'
+```
+
+Run more `stream run` processes, with any subset of `-stages`, and the partitions spread over them. `cmd/streamexp` runs experiments k1 to k4 against the broker and appends one row per run to `results/stream/*.jsonl`. Its row-level files go under `build/stream/`.
+
 ## Repository layout
 
 ```
