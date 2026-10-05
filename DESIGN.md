@@ -626,6 +626,46 @@ Restart to ready over the 4.16 MB warm snapshot (498,113 payments of history) to
 
 Two things are not settled. First, in kill mode the breaker also opened once in each healthy phase, about 6 to 7 s after each process started, costing about 415 unchecked payments each time. It reproduced in two runs and never happened in freeze mode. Periodic snapshots and GC were ruled out directly. The machine was not idle during either run, so contention is the leading explanation, but a cold-start effect has not been ruled out. Those numbers are not cited until an idle rerun. Second, how many of the unchecked payments were fraud depends on which payments land in the outage window. The fraud count and its dollar cost come from experiment 8's replay, which fails RiskGate the same way.
 
+### Stream experiments
+
+The stream experiments ran on a different machine from experiments 1 to 9: an AMD Ryzen 3 4300U (4 cores, 4 threads, 16 GB), Windows 11, go1.26.5, with Apache Kafka 3.9.1 as one local KRaft broker (`scripts/kafka_local.sh`). `cmd/streamexp` drives them and appends one row per run to `results/stream/*.jsonl` with the commit, the machine, and its load: the whole-machine CPU busy share in the 10 s before the run and during it, the load average inside the WSL VM where another project was benchmarking, and that project's benchmark lock if it held one. The machine was shared with that project throughout, often fully busy before a run started. **So every timing below is not quotable**, and the rows say so (`quotable: false` or `load.quiet: false`). The correctness counts do not depend on load: a mismatch is a mismatch however long the run took.
+
+Before any Kafka run, `cmd/export` was re-run here from the binary cache. Its `encoder.json`, `features.json` and `test_replay.jsonl` came out byte-identical to the files the Mac produced in September, so the reference the stream is compared against is the same one experiment 2 used.
+
+#### k1. Parity through Kafka
+
+**Question.** Does a payment that goes through Kafka get exactly the decision it gets offline and over HTTP?
+**Method.** All 590,540 IEEE-CIS payments, labels stripped, written to an 8-partition payments topic keyed by card in (TransactionDT, TransactionID) order, with heartbeats and the SIMULATED disputes (experiment 7's delay model) on their own topic. Two pipeline processes, each running all four stages, 8 partitions per topic, `models/ieee`, `rules/default.rules`. The decisions topic was read back (`riskgate stream decisions`), sorted into event-time order and checked four ways: by `cmd/serveparity compare`, experiment 2's checker, against a fresh offline replay, `export.csv` and the offline Scorer; line by line against a decision log of the same 590,540 payments sent through `riskgate serve` over HTTP on the same machine (`streamexp httplog`); by `riskgate audit`; and by the snapshot counters. Then a backtest table was built from the decision log alone and every rule of `rules/default.rules` and `rules/baseline.rules` was backtested on it and on the offline table (`riskgate table`'s construction), comparing the reports whole.
+**Result.** Run `k1-20261005T100004` in `results/stream/k1.jsonl`.
+
+| Check | Rows | Differ |
+|---|---|---|
+| Payments with a decision, read back from the topic | 590,540 of 590,540 | 0 lost, 0 duplicate records |
+| Features against the offline replay (53 catalog fields) | 590,540 | 0 |
+| Encoded model inputs against `export.csv` | 590,540 | 0 |
+| Raw score, probability and `risk_score` against the offline Scorer | 590,540 | 0 |
+| Decision, rule, scores and every feature against the HTTP service's decision log | 590,540 | 0 |
+| `riskgate audit` of the streamed decisions | 590,540 | 0 |
+| Entity events applied, from the snapshots, against the data | 1,729,036 against 1,729,036 | 0 |
+| Backtest reports from the topic against the offline table (13 rules) | 13 | 0 (feature and score columns identical, cell for cell) |
+
+Late events 0, order violations 0, events still buffered at the end 0. The pipeline decided all 590,540 payments 302 s after the replay started, about 1,950 per second, with the machine at 100% CPU before and during the run, so that rate is a floor and is not quoted.
+
+The backtest from the topic can also be labelled from the disputes topic instead of the dataset. Then a fraudulent payment counts as fraud only once its (simulated) dispute has arrived. For `rules/default.rules`'s block rule over the whole period, as of the last payment, that turned 89 fraudulent payments whose disputes were still to come into "legitimate": 204 legitimate payments blocked instead of 115, against the same 5,868 blocked. That is experiment 7's point, label maturity, seen from the production side.
+
+**The design not taken, measured.** `streamexp naive` partitions the payments by card (the pipeline's own `CardPartition`) and keeps every entity's velocity state per partition, which is what one consumer group keyed by card would compute. It is deterministic, so it runs offline (`results/stream/naive.jsonl`).
+
+| Payments partitions | Payments with any feature different from the export | of which device features | of which email-domain features |
+|---|---|---|---|
+| 1 | 0 | 0 | 0 |
+| 2 | 506,045 (85.7%) | 111,532 | 495,590 |
+| 8 | 506,469 (85.8%) | 114,408 | 495,940 |
+| 16 | 506,498 (85.8%) | 114,571 | 495,955 |
+
+Card and `uid` features were right in every case, as co-partitioning predicts. Device and email features were wrong for 86% of payments as soon as there were two partitions.
+
+**Hot keys** (`results/stream/skew.jsonl`). The 590,540 payments make 1,729,036 entity events. The busiest key is the email domain `gmail.com` with 228,355 of them (13%), then `yahoo.com` (100,934) and the device string `Windows` (47,722). With 8 aggregator partitions the busiest partition gets 1.78 times the mean, with 16 it gets 2.91 times, with 32 it gets 4.96 times, because one key cannot be split. In k1 that partition's aggregator was never the bottleneck: aggregation took about 22 s of busy time across both processes for the whole replay, against about 520 s for the joiners, which run the model.
+
 ## Bug log
 
 Real bugs found by tests, fuzzing and parity checks, each with a regression test.
