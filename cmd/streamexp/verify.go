@@ -59,7 +59,7 @@ func (e *env) verify(ctx context.Context, expected int, export string, txns []da
 
 	cmpPath := filepath.Join(e.work, "offline_compare.json")
 	_, cerr := e.run(ctx, "serveparity", "compare", "-log", logPath, "-data", e.data, "-export", export, "-model", e.model, "-json", cmpPath, "-examples", "5")
-	if b, err := os.ReadFile(cmpPath); err == nil {
+	if b, err := os.ReadFile(cmpPath); err == nil && json.Valid(b) {
 		v.Offline = b
 		var rep struct {
 			OK  bool `json:"ok"`

@@ -44,9 +44,14 @@ type splitStats struct {
 	RiskScoreDiffer   int `json:"risk_score_differ"`
 	// Sanity check of the reference itself: the offline replay row encoded
 	// against export.csv.
-	OfflineVsExportDiffer int     `json:"offline_replay_vs_export_csv_differ"`
+	OfflineVsExportDiffer int `json:"offline_replay_vs_export_csv_differ"`
+	// The largest difference between two present values. A value missing
+	// on one side and present on the other has no finite difference: those
+	// are counted in MissingAgainstPresent instead, which also keeps the
+	// report encodable as JSON (it has no infinity).
 	MaxAbsFeatureDiff     float64 `json:"max_abs_feature_diff"`
 	MaxAbsRawScoreDiff    float64 `json:"max_abs_raw_score_diff"`
+	MissingAgainstPresent int     `json:"values_missing_against_present"`
 }
 
 func (s *splitStats) bad() bool {
@@ -155,7 +160,10 @@ func compare(args []string, stdout io.Writer) (bool, error) {
 		fmt.Fprintln(stdout, "OK: every row bit-identical")
 	}
 	if *jsonOut != "" {
-		b, _ := json.MarshalIndent(rep, "", "  ")
+		b, err := json.MarshalIndent(rep, "", "  ")
+		if err != nil {
+			return false, fmt.Errorf("encoding the report: %w", err)
+		}
 		if err := os.WriteFile(*jsonOut, append(b, '\n'), 0o644); err != nil {
 			return false, err
 		}
@@ -322,7 +330,11 @@ func (c *comparer) row(t *data.Txn, off schema.Row, split string) error {
 			a, b := logged.Num[f.Slot], off.Num[f.Slot]
 			if !eq(a, b) {
 				same = false
-				st.MaxAbsFeatureDiff = max(st.MaxAbsFeatureDiff, absDiff(a, b))
+				if d := absDiff(a, b); math.IsInf(d, 1) {
+					st.MissingAgainstPresent++
+				} else {
+					st.MaxAbsFeatureDiff = max(st.MaxAbsFeatureDiff, d)
+				}
 				c.example("TransactionID %d %s: service %v, offline %v", t.ID, f.Name, a, b)
 			}
 		} else if logged.Str[f.Slot] != off.Str[f.Slot] {
@@ -358,7 +370,11 @@ func (c *comparer) row(t *data.Txn, off schema.Row, split string) error {
 		raw := c.scorer.Model().PredictRaw(c.vecExport)
 		if !eq(*e.RawScore, raw) {
 			st.RawScoreDiffer = 1
-			st.MaxAbsRawScoreDiff = absDiff(*e.RawScore, raw)
+			if d := absDiff(*e.RawScore, raw); math.IsInf(d, 1) {
+				st.MissingAgainstPresent++
+			} else {
+				st.MaxAbsRawScoreDiff = d
+			}
 			c.example("TransactionID %d raw score: service %v, offline %v", t.ID, *e.RawScore, raw)
 		}
 		off.Num[c.riskSlot] = math.NaN()
@@ -385,6 +401,7 @@ func add(dst, src *splitStats) {
 	dst.OfflineVsExportDiffer += src.OfflineVsExportDiffer
 	dst.MaxAbsFeatureDiff = max(dst.MaxAbsFeatureDiff, src.MaxAbsFeatureDiff)
 	dst.MaxAbsRawScoreDiff = max(dst.MaxAbsRawScoreDiff, src.MaxAbsRawScoreDiff)
+	dst.MissingAgainstPresent += src.MissingAgainstPresent
 }
 
 // finish counts log lines that matched no offline row, and checks

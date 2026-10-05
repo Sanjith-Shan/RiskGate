@@ -74,10 +74,10 @@ func k2(ctx context.Context, args []string) error {
 	}()
 
 	type killEvent struct {
-		Victim     string  `json:"victim"`
-		AtS        float64 `json:"at_s"`
-		DownMs     int64   `json:"down_ms"`
-		Log        string  `json:"log"`
+		Victim string  `json:"victim"`
+		AtS    float64 `json:"at_s"`
+		DownMs int64   `json:"down_ms"`
+		Log    string  `json:"log"`
 	}
 	var events []*killEvent
 	rng := rand.New(rand.NewPCG(*seed, 0x6b32))
