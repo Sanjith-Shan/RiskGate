@@ -78,8 +78,6 @@ func k2(ctx context.Context, args []string) error {
 		AtS        float64 `json:"at_s"`
 		DownMs     int64   `json:"down_ms"`
 		Log        string  `json:"log"`
-		restarted  *member
-		restartLog string
 	}
 	var events []*killEvent
 	rng := rand.New(rand.NewPCG(*seed, 0x6b32))

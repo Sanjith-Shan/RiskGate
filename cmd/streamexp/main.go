@@ -105,7 +105,7 @@ func (c *common) setup(exp string) error {
 		return err
 	}
 	if _, err := os.Stat(c.env.exe("riskgate")); err != nil {
-		return fmt.Errorf("build the binaries first: go build -o %s/ ./cmd/...", c.env.bin)
+		return fmt.Errorf("no riskgate binary in %s (go build -o %s/ ./cmd/...)", c.env.bin, c.env.bin)
 	}
 	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"maps"
 	"math"
 	"slices"
-	"strconv"
 	"time"
 
 	"github.com/Sanjith-Shan/RiskGate/internal/features"
@@ -285,6 +284,3 @@ func (j *joiner) restore(b []byte) error {
 	}
 	return d.done()
 }
-
-// itoa is strconv.Itoa for int32 partitions in names and logs.
-func itoa(p int32) string { return strconv.Itoa(int(p)) }

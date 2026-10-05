@@ -61,7 +61,7 @@ func (r *router) handle(rec in, out []output) ([]output, error) {
 			return r.dead(rec, out, fmt.Errorf("heartbeat: %w", err)), nil
 		}
 		r.heartbeats++
-		if p := (Pos{hb.DT, hb.ID}); r.last.Less(p) {
+		if p := Pos(hb); r.last.Less(p) {
 			r.last = p // a heartbeat may repeat the latest payment's position
 		}
 		return out, nil

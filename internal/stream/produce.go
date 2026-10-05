@@ -95,7 +95,7 @@ func Produce(ctx context.Context, cl *kgo.Client, txns []data.Txn, nPayments int
 		}
 	}
 	heartbeat := func(p Pos, at time.Time) error {
-		v, err := json.Marshal(Heartbeat{DT: p.DT, ID: p.ID})
+		v, err := json.Marshal(Heartbeat(p))
 		if err != nil {
 			return err
 		}
