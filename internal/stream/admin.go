@@ -133,6 +133,9 @@ func ReadTopic(ctx context.Context, brokers []string, topic string, fn func(*kgo
 	return nil
 }
 
+// StallTimeout is how long WaitForDecisions waits for progress.
+var StallTimeout = 3 * time.Minute
+
 // DecisionSet is the decisions topic read back and deduplicated by payment
 // id.
 type DecisionSet struct {
@@ -234,8 +237,13 @@ func (ds *DecisionSet) WriteSorted(w io.Writer) error {
 }
 
 // WaitForDecisions polls the decisions topic's end offsets until they stop
-// growing for quiet, or until want records exist, or ctx ends.
+// growing for quiet, or until want records exist, or ctx ends. With want > 0
+// it fails if the count does not grow for StallTimeout.
 func WaitForDecisions(ctx context.Context, brokers []string, topic string, want int64, quiet time.Duration) (int64, error) {
+	var stall time.Duration
+	if want > 0 {
+		stall = StallTimeout
+	}
 	cl, err := kgo.NewClient(kgo.SeedBrokers(brokers...))
 	if err != nil {
 		return 0, err
@@ -245,6 +253,9 @@ func WaitForDecisions(ctx context.Context, brokers []string, topic string, want 
 	var last int64 = -1
 	lastChange := time.Now()
 	for {
+		if stall > 0 && time.Since(lastChange) > stall {
+			return last, fmt.Errorf("stream: %s stopped growing at %d records for %v", topic, last, stall)
+		}
 		ends, err := adm.ListEndOffsets(ctx, topic)
 		if err != nil {
 			return last, err

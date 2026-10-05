@@ -197,7 +197,14 @@ func NewRunner(ctx context.Context, cfg Config) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
-	r.counts, err = ReadPartitionCounts(ctx, admin, cfg.Topics)
+	// Topics created a moment ago may not be in the metadata yet.
+	for wait := time.Now(); ; {
+		r.counts, err = ReadPartitionCounts(ctx, admin, cfg.Topics)
+		if err == nil || time.Since(wait) > 30*time.Second || ctx.Err() != nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 	admin.Close()
 	if err != nil {
 		return nil, err

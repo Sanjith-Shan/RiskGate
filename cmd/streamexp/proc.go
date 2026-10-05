@@ -112,6 +112,13 @@ func (e *env) start(m *member) error {
 		logf.Close()
 		m.exited <- err
 	}()
+	// A member that cannot start (no broker, no topics) exits at once.
+	select {
+	case err := <-m.exited:
+		m.exited <- err
+		return fmt.Errorf("%s exited at start (%v); see %s", m.name, err, m.logPath)
+	case <-time.After(2 * time.Second):
+	}
 	return nil
 }
 
